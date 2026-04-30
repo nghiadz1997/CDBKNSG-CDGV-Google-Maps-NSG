@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GOOGLE MAPS CDBKNSG - DEMO</title>
+    <title>Nam Sài Gòn Navigator - Hệ thống Phân quyền & Định vị</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -13,14 +13,14 @@
     <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
         
         #map { height: 100%; width: 100%; z-index: 1; }
         
         .map-container {
-            height: 40vh;
-            min-height: 300px;
+            height: 50vh;
+            min-height: 400px;
         }
 
         @media (min-width: 1024px) {
@@ -48,24 +48,77 @@
             scroll-snap-type: x mandatory;
         }
         .image-gallery img {
-            flex: 0 0 85%;
+            flex: 0 0 90%;
             scroll-snap-align: start;
-            height: 200px;
+            height: 220px;
             object-fit: cover;
-            border-radius: 1.25rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
-        @media (min-width: 1024px) {
-            .image-gallery img { flex: 0 0 100%; }
+
+        /* Room Type Badges */
+        .badge-classroom { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-faculty { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .badge-admin { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+        .badge-func { background: #fdf4ff; color: #7e22ce; border: 1px solid #f5d0fe; }
+        .badge-rector { background: #0f172a; color: #ffffff; border: 1px solid #334155; }
+
+        /* Custom Marker Styles */
+        .custom-marker-icon {
+            background: none !important;
+            border: none !important;
+        }
+        .marker-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .marker-icon-box {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            border: 2.5px solid white;
+            box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+        .marker-label {
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e293b;
+            padding: 2px 8px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 800;
+            margin-top: 4px;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0;
+        }
+        /* Specific Styles for Rector/VP */
+        .box-rector { background: #0f172a; }
+        .label-rector { background: #0f172a; color: white; border-color: #334155; }
+
+        /* General Room Marker (Dot) */
+        .room-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 8px rgba(0,0,0,0.2);
         }
 
         .admin-active-map { cursor: crosshair !important; }
-        
-        .step-card {
-            transition: all 0.2s ease;
+
+        /* Popup Styles */
+        .leaflet-popup-content-wrapper {
+            border-radius: 1.5rem;
+            padding: 5px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
-        .step-card:hover {
-            transform: translateX(4px);
+        .profile-popup {
+            min-width: 220px;
         }
     </style>
 </head>
@@ -74,13 +127,13 @@
 <div id="app" class="flex flex-col lg:flex-row min-h-screen relative">
     
     <!-- SIDEBAR CONTROLS -->
-    <aside class="w-full lg:w-[400px] xl:w-[450px] flex flex-col z-20 shadow-2xl bg-white lg:h-screen overflow-hidden order-2 lg:order-1 border-r border-slate-200">
+    <aside class="w-full lg:w-[420px] xl:w-[480px] flex flex-col z-20 shadow-[0_-10px_40px_rgba(0,0,0,0.1)] lg:shadow-2xl bg-white lg:h-screen overflow-hidden order-2 lg:order-1 border-t lg:border-t-0 lg:border-r border-slate-200 rounded-t-[2.5rem] lg:rounded-t-none -mt-10 lg:mt-0">
         
         <!-- Header -->
-        <header class="p-5 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg">
+        <header class="p-5 lg:p-6 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg">
             <div>
-                <h1 class="text-xl font-black tracking-tighter leading-none">GOOGLE MAPS CĐBKNSG</h1>
-                <p class="text-[10px] opacity-70 uppercase tracking-widest font-bold mt-1">Chi Đoàn Giáo Viên</p>
+                <h1 class="text-xl font-extrabold tracking-tighter leading-none">GOOGLE MAPS CĐBKNSG</h1>
+                <p class="text-[10px] opacity-70 uppercase tracking-[0.2em] font-bold mt-1">Chi Đoàn Giáo Viên</p>
             </div>
             <button id="admin-toggle-btn" onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
                 <i id="admin-icon" class="fas fa-user-shield"></i>
@@ -88,24 +141,40 @@
         </header>
 
         <!-- Dynamic Content Area -->
-        <div class="flex-1 overflow-y-auto">
+        <div class="flex-1 overflow-y-auto custom-scrollbar">
             
             <!-- User Interface -->
-            <div id="user-view" class="p-5 space-y-6">
+            <div id="user-view" class="p-5 lg:p-6 space-y-6">
+                
+                <!-- Search Section -->
                 <div class="space-y-4">
                     <div class="relative">
-                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest ml-1">Tìm vị trí phòng/khu vực</label>
-                        <div class="relative">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest ml-1">Tìm vị trí phòng / văn phòng</label>
+                        <div class="relative group">
                             <select id="destination" onchange="logic.selectLocation(this.value)" class="w-full p-4 pl-12 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none bg-slate-50 text-slate-800 font-bold appearance-none cursor-pointer transition-all shadow-sm">
-                                <option value="">-- Chọn địa điểm --</option>
+                                <option value="">-- Bạn muốn đi đâu? --</option>
                             </select>
-                            <i class="fas fa-map-marker-alt absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
-                            <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs pointer-events-none"></i>
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
+                        </div>
+                    </div>
+
+                    <!-- Welcome Panel -->
+                    <div id="welcome-panel" class="space-y-6 py-4">
+                        <div class="bg-blue-50 rounded-[2rem] p-6 border border-blue-100 text-center">
+                            <div class="w-16 h-16 bg-white rounded-2xl shadow-md flex items-center justify-center mx-auto mb-4 border border-blue-50">
+                                <i class="fas fa-map-marked-alt text-2xl text-blue-600"></i>
+                            </div>
+                            <h2 class="text-lg font-extrabold text-blue-900 tracking-tight">Vị trí trực tuyến</h2>
+                            <p class="text-sm text-blue-700/70 mt-2 font-medium italic text-center">Nhấn trực tiếp vào các biểu tượng trên bản đồ để xem hồ sơ nhân sự.</p>
                         </div>
                     </div>
 
                     <!-- Navigation Result Panel -->
-                    <div id="navigation-panel" class="hidden space-y-5 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div id="navigation-panel" class="hidden space-y-5 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                        
+                        <!-- Type Badges -->
+                        <div id="room-type-info" class="flex flex-wrap gap-2"></div>
+
                         <!-- Distance Info -->
                         <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 rounded-[2rem] text-white flex items-center justify-between shadow-xl shadow-blue-100">
                             <div class="flex items-center gap-4">
@@ -120,27 +189,48 @@
                             <span id="distance-val" class="text-3xl font-black tracking-tighter">0 m</span>
                         </div>
 
-                        <!-- Ghi chú & Gallery -->
-                        <div class="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
-                            <div class="flex items-center gap-2 mb-3">
-                                <i class="fas fa-info-circle text-blue-500"></i>
-                                <h3 class="font-bold text-[10px] text-slate-500 uppercase tracking-wider">Thông tin & Hình ảnh</h3>
-                            </div>
-                            <p id="note-content" class="text-sm text-slate-700 leading-relaxed font-medium mb-5 italic"></p>
-                            
-                            <div id="image-gallery" class="image-gallery hidden">
-                                <!-- Images injected by JS -->
+                        <!-- Contact Card -->
+                        <div id="office-contact-card" class="hidden bg-white border-2 border-indigo-50 rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative">
+                            <div id="rector-decoration" class="hidden absolute -right-6 -top-6 w-24 h-24 bg-slate-900 rounded-full opacity-5"></div>
+                            <h3 class="text-xs font-black text-slate-500 uppercase tracking-widest mb-5 flex items-center gap-2">
+                                <i class="fas fa-id-card-alt text-indigo-500"></i> Thông tin nhân sự
+                            </h3>
+                            <div class="space-y-4">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0"><i class="fas fa-user-tie text-indigo-600"></i></div>
+                                    <div>
+                                        <p id="head-title-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Lãnh đạo đơn vị</p>
+                                        <p id="head-name" class="text-base font-extrabold text-slate-800"></p>
+                                    </div>
+                                </div>
+                                <div id="deputy-container" class="flex items-start gap-4">
+                                    <div class="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0"><i class="fas fa-user-friends text-indigo-600"></i></div>
+                                    <div>
+                                        <p id="deputy-title-label" class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Cấp phó đơn vị</p>
+                                        <p id="deputy-name" class="text-base font-extrabold text-slate-800"></p>
+                                    </div>
+                                </div>
+                                <div class="p-4 bg-slate-50 rounded-3xl border border-slate-100 mt-2">
+                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">Nhiệm vụ chính</p>
+                                    <p id="room-mission" class="text-xs font-semibold text-slate-600 leading-relaxed"></p>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Custom Navigation Steps -->
-                        <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-                            <h3 class="font-bold text-[10px] text-slate-400 uppercase mb-4 tracking-wider flex items-center gap-2">
-                                <i class="fas fa-route text-blue-600"></i> Hướng dẫn chi tiết (Tùy chỉnh)
+                        <!-- Gallery -->
+                        <div id="image-gallery-container" class="hidden bg-slate-50 rounded-[2.5rem] p-6 border border-slate-100">
+                            <h3 class="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <i class="fas fa-camera text-blue-500"></i> Hình ảnh minh họa
                             </h3>
-                            <div id="step-list" class="space-y-4">
-                                <!-- Custom Steps will be injected here -->
-                            </div>
+                            <div id="image-gallery" class="image-gallery"></div>
+                        </div>
+
+                        <!-- Steps -->
+                        <div class="bg-white border border-slate-100 rounded-[2.5rem] p-6 shadow-sm">
+                            <h3 class="font-bold text-[10px] text-slate-400 uppercase mb-4 tracking-wider flex items-center gap-2">
+                                <i class="fas fa-route text-blue-600"></i> Hướng dẫn di chuyển
+                            </h3>
+                            <div id="step-list" class="space-y-4 text-sm font-medium"></div>
                         </div>
 
                         <a id="open-google-maps" href="#" target="_blank" class="flex w-full bg-slate-900 text-white font-black py-5 rounded-2xl items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95">
@@ -151,73 +241,113 @@
             </div>
 
             <!-- Admin Interface -->
-            <div id="admin-panel" class="hidden p-5 space-y-6 bg-slate-50/50 min-h-full">
+            <div id="admin-panel" class="hidden p-5 lg:p-6 space-y-6 bg-slate-50/50 min-h-full">
                 <div class="flex justify-between items-center border-b border-slate-200 pb-4">
-                    <h2 class="text-lg font-black text-blue-600 uppercase tracking-tighter">Quản trị Location</h2>
+                    <h2 class="text-lg font-black text-blue-600 uppercase tracking-tighter">Quản trị Hệ thống</h2>
                     <button onclick="ui.logout()" class="text-[10px] font-black text-red-500 bg-red-100 px-4 py-2 rounded-xl uppercase tracking-widest hover:bg-red-200 transition-all">Đăng xuất</button>
                 </div>
 
-                <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl mb-4">
-                    <p class="text-[10px] text-blue-800 font-bold leading-tight uppercase tracking-widest mb-1">
-                        <i class="fas fa-magic mr-1"></i> Cách tạo chỉ dẫn có icon:
-                    </p>
-                    <p class="text-[9px] text-blue-600 leading-relaxed">
-                        Hãy viết mỗi hướng dẫn trên 1 dòng. Hệ thống tự nhận diện từ khóa: <br>
-                        - <b>"Rẽ trái"</b>: Hiện mũi tên trái <br>
-                        - <b>"Rẽ phải"</b>: Hiện mũi tên phải <br>
-                        - <b>"Đi thẳng"</b>: Hiện mũi tên lên <br>
-                        - <b>"Cầu thang/Thang máy"</b>: Hiện icon thang
-                    </p>
-                </div>
-
-                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-4">
+                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-4 pb-20">
                     <input type="hidden" id="form-id">
-                    <div class="space-y-4 bg-white p-5 rounded-[2rem] border border-slate-200 shadow-sm">
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tên phòng học / Khu vực</label>
-                            <input type="text" id="form-name" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 transition-all" placeholder="VD: A0.1">
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Vĩ độ (Lat)</label>
-                                <input type="number" step="any" id="form-lat" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 transition-all" placeholder="10.73...">
+                    <div class="space-y-4 bg-white p-5 lg:p-6 rounded-[2.5rem] border border-slate-200 shadow-sm">
+                        <!-- Primary Classifiers -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tên địa điểm / Phòng</label>
+                                <input type="text" id="form-name" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 font-bold" placeholder="VD: Văn phòng Khoa CNTT">
                             </div>
                             <div>
-                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Kinh độ (Lng)</label>
-                                <input type="number" step="any" id="form-lng" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 transition-all" placeholder="106.6...">
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Khu (Area)</label>
+                                <select id="form-area" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold">
+                                    <option value="A">Khu A</option>
+                                    <option value="B">Khu B</option>
+                                    <option value="C">Khu C</option>
+                                    <option value="D">Khu D</option>
+                                    <option value="Khác">Khu vực khác</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tầng (Floor)</label>
+                                <select id="form-floor" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold">
+                                    <option value="Trệt">Trệt</option>
+                                    <option value="1">Lầu 1</option>
+                                    <option value="2">Lầu 2</option>
+                                    <option value="3">Lầu 3</option>
+                                    <option value="4">Lầu 4</option>
+                                </select>
                             </div>
                         </div>
+
                         <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Chỉ dẫn cụ thể (Tách dòng để chia bước)</label>
-                            <textarea id="form-note" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-32" placeholder="Bước 1: Đi thẳng 20m...&#10;Bước 2: Rẽ trái tại sảnh...&#10;Bước 3: Đi lên lầu 1..."></textarea>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Phân loại (Type)</label>
+                            <select id="form-type" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold">
+                                <option value="phong-hoc">Phòng học (Chấm xanh)</option>
+                                <option value="hieu-truong">Phòng Hiệu Trưởng (Icon Vest + Tên thầy)</option>
+                                <option value="pho-hieu-truong">Phòng Phó Hiệu Trưởng (Icon Vest + Tên thầy)</option>
+                                <option value="vp-khoa">Văn phòng Khoa (Icon + Tên phòng)</option>
+                                <option value="hanh-chinh">Hành chính (Icon + Tên phòng)</option>
+                                <option value="phong-chuc-nang">Phòng chức năng (Icon + Tên phòng)</option>
+                            </select>
                         </div>
-                        <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Links ảnh (Cách nhau bằng dấu phẩy)</label>
-                            <textarea id="form-images" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-20" placeholder="https://drive.google.com/..., https://..."></textarea>
+
+                        <!-- Coordinates -->
+                        <div class="grid grid-cols-2 gap-4 text-xs font-bold text-amber-600 bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Vĩ độ (Lat)</label>
+                                <input type="number" step="any" id="form-lat" required class="w-full bg-transparent outline-none" placeholder="10.73...">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase block mb-1">Kinh độ (Lng)</label>
+                                <input type="number" step="any" id="form-lng" required class="w-full bg-transparent outline-none" placeholder="106.6...">
+                            </div>
+                        </div>
+
+                        <!-- Personnel & Mission -->
+                        <div class="space-y-4 border-t pt-5">
+                            <p class="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em]">Thông tin nhân sự & Nhiệm vụ</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Họ tên Trưởng / Hiệu Trưởng</label>
+                                    <input type="text" id="form-head" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold" placeholder="Họ và tên">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Họ tên Phó / Phó Hiệu Trưởng</label>
+                                    <input type="text" id="form-deputy" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold" placeholder="Họ và tên">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Nhiệm vụ đơn vị</label>
+                                <textarea id="form-mission" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 h-20" placeholder="Nhiệm vụ chính..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Instructions & Media -->
+                        <div class="space-y-4 border-t pt-5">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Hướng dẫn di chuyển (Tách dòng)</label>
+                                <textarea id="form-note" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 h-28" placeholder="Bước 1...&#10;Bước 2..."></textarea>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Links ảnh (Dấu phẩy)</label>
+                                <textarea id="form-images" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl bg-slate-50 h-20" placeholder="Link 1, Link 2..."></textarea>
+                            </div>
                         </div>
                     </div>
-                    <button type="submit" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest">Lưu dữ liệu Cloud</button>
-                    <button type="button" onclick="logic.resetForm()" class="w-full text-slate-400 font-bold text-xs uppercase py-2">Hủy / Reset Form</button>
+                    <button type="submit" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest">Lưu dữ liệu đồng bộ</button>
+                    <button type="button" onclick="logic.resetForm()" class="w-full text-slate-400 font-bold text-xs uppercase py-2">Làm mới Form</button>
                 </form>
 
-                <div class="pt-6">
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-1">Danh sách đã thêm</h3>
-                    <div id="admin-list" class="space-y-3">
-                    </div>
+                <div class="pt-6 pb-20">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-1">Danh sách Địa điểm</h3>
+                    <div id="admin-list" class="space-y-3"></div>
                 </div>
             </div>
         </div>
-
-        <footer class="p-6 border-t border-slate-100 bg-white">
-            <p class="text-[9px] text-slate-400 font-bold text-center uppercase tracking-[0.3em]">Bảng Demo Test By Kenny &copy; 2026</p>
-        </footer>
     </aside>
 
     <!-- MAP INTERFACE -->
     <main class="flex-1 map-container order-1 lg:order-2 sticky top-0 relative overflow-hidden">
         <div id="map"></div>
-        
-        <!-- Floating UI over Map -->
         <div class="absolute top-6 right-6 z-[1000] flex flex-col gap-3">
             <button onclick="ui.toggleLayer()" class="bg-white/90 backdrop-blur-md p-4 rounded-[1.5rem] shadow-2xl border border-white hover:scale-105 transition-all text-blue-600 flex items-center justify-center">
                 <i id="layer-icon" class="fas fa-satellite text-xl"></i>
@@ -225,14 +355,6 @@
             <button onclick="logic.recenter()" class="bg-white/90 backdrop-blur-md p-4 rounded-[1.5rem] shadow-2xl border border-white hover:scale-105 transition-all text-slate-600 flex items-center justify-center">
                 <i class="fas fa-crosshairs text-xl"></i>
             </button>
-        </div>
-        
-        <!-- Status Indicator -->
-        <div class="absolute bottom-6 left-6 z-[1000] lg:flex hidden">
-            <div class="bg-slate-900/80 backdrop-blur-md px-5 py-3 rounded-full border border-white/20 shadow-2xl flex items-center gap-3">
-                <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
-                <span class="text-xs font-bold text-white uppercase tracking-widest">Campus Live Data</span>
-            </div>
         </div>
     </main>
 
@@ -243,14 +365,13 @@
                 <div class="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-xl shadow-blue-100">
                     <i class="fas fa-lock text-4xl"></i>
                 </div>
-                <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Admin Login</h2>
-                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">Dành cho cán bộ quản lý Navigator</p>
+                <h2 class="text-3xl font-black text-slate-800 tracking-tighter text-center">Admin Access</h2>
             </div>
             <div class="space-y-4">
-                <input type="text" id="admin-user" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none font-bold text-center transition-all" placeholder="Username">
-                <input type="password" id="admin-pass" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none font-bold text-center transition-all" placeholder="Password">
-                <button onclick="ui.login()" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 mt-4 active:scale-95 transition-transform uppercase tracking-widest">Đăng nhập</button>
-                <button onclick="ui.toggleAdminLogin()" class="w-full text-slate-400 font-black text-[10px] uppercase py-2 tracking-widest mt-2">Đóng lại</button>
+                <input type="text" id="admin-user" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none font-bold text-center" placeholder="Username">
+                <input type="password" id="admin-pass" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none font-bold text-center" placeholder="Password">
+                <button onclick="ui.login()" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 mt-4 uppercase">Đăng nhập</button>
+                <button onclick="ui.toggleAdminLogin()" class="w-full text-slate-400 font-black text-[10px] uppercase py-2 tracking-widest mt-2">Đóng</button>
             </div>
         </div>
     </div>
@@ -275,9 +396,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const appId = 'nsg-navigator-v2';
+    const appId = 'nsg-navigator-v6'; 
 
-    let map, currentMarker, routingControl;
+    let map, routingControl;
+    let locationMarkersGroup = L.layerGroup(); 
     let isSatellite = true;
     let isAdmin = false;
     let locations = [];
@@ -286,25 +408,25 @@
     const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'] });
     const googleRoadmap = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'] });
 
+    const safeSetText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val || "";
+    };
+
     window.ui = {
         toggleLayer: () => {
             isSatellite = !isSatellite;
             if (isSatellite) {
-                map.removeLayer(googleRoadmap);
-                googleSatellite.addTo(map);
+                map.removeLayer(googleRoadmap); googleSatellite.addTo(map);
                 document.getElementById('layer-icon').className = "fas fa-satellite";
             } else {
-                map.removeLayer(googleSatellite);
-                googleRoadmap.addTo(map);
+                map.removeLayer(googleSatellite); googleRoadmap.addTo(map);
                 document.getElementById('layer-icon').className = "fas fa-layer-group";
             }
         },
         toggleAdminLogin: () => {
-            if (isAdmin) {
-                ui.logout();
-            } else {
-                document.getElementById('login-modal').classList.remove('hidden');
-            }
+            if (isAdmin) ui.logout();
+            else document.getElementById('login-modal').classList.remove('hidden');
         },
         login: () => {
             const u = document.getElementById('admin-user').value;
@@ -316,11 +438,7 @@
                 document.getElementById('admin-panel').classList.remove('hidden');
                 document.getElementById('admin-icon').className = "fas fa-sign-out-alt";
                 document.getElementById('map').classList.add('admin-active-map');
-                document.getElementById('admin-user').value = '';
-                document.getElementById('admin-pass').value = '';
-            } else {
-                alert("Thông tin đăng nhập sai!");
-            }
+            } else { alert("Sai thông tin đăng nhập!"); }
         },
         logout: () => {
             isAdmin = false;
@@ -335,8 +453,9 @@
         init: async () => {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView(schoolGate, 19);
             googleSatellite.addTo(map);
-            L.marker(schoolGate).addTo(map).bindPopup("<div class='font-bold text-center'>Cổng chính<br>Nam Sài Gòn</div>").openPopup();
-            
+            L.marker(schoolGate).addTo(map).bindPopup("<div class='font-bold text-blue-600 text-center'>Cổng chính<br>47 Cao Lỗ</div>").openPopup();
+            locationMarkersGroup.addTo(map);
+
             map.on('click', (e) => {
                 if (isAdmin) {
                     document.getElementById('form-lat').value = e.latlng.lat.toFixed(7);
@@ -348,15 +467,12 @@
             logic.listenToFirestore();
         },
 
-        recenter: () => {
-            map.flyTo(schoolGate, 19);
-        },
+        recenter: () => map.flyTo(schoolGate, 19),
 
         formatImageLink: (url) => {
             if (!url) return "";
             url = url.trim();
-            const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/) || 
-                             url.match(/drive\.google\.com\/open\?id=([^\&]+)/);
+            const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/) || url.match(/drive\.google\.com\/open\?id=([^\&]+)/);
             if (driveMatch) return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
             return url;
         },
@@ -365,171 +481,283 @@
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'locations');
             onSnapshot(colRef, (snapshot) => {
                 locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                logic.updateUI();
+                logic.updateMapMarkers(); 
+                logic.updateUILists(); 
             });
         },
 
-        updateUI: () => {
-            const select = document.getElementById('destination');
-            const adminList = document.getElementById('admin-list');
-            
-            const currentVal = select.value;
-            select.innerHTML = '<option value="">-- Chọn địa điểm --</option>';
-            locations.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true})).forEach(loc => {
-                const opt = document.createElement('option');
-                opt.value = loc.id;
-                opt.textContent = loc.name;
-                select.appendChild(opt);
-            });
-            select.value = currentVal;
-
-            adminList.innerHTML = '';
+        updateMapMarkers: () => {
+            locationMarkersGroup.clearLayers();
             locations.forEach(loc => {
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md";
-                div.innerHTML = `
-                    <div>
-                        <p class="font-bold text-slate-800 text-sm">${loc.name}</p>
-                        <p class="text-[9px] text-slate-400 font-medium uppercase tracking-widest">${loc.coords[0].toFixed(4)}, ${loc.coords[1].toFixed(4)}</p>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="logic.edit('${loc.id}')" class="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl text-xs flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-edit"></i></button>
-                        <button onclick="logic.delete('${loc.id}')" class="w-9 h-9 bg-red-50 text-red-600 rounded-xl text-xs flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i class="fas fa-trash-alt"></i></button>
+                let marker;
+                const typeLabelMap = { 
+                    'phong-hoc': 'Phòng học', 
+                    'vp-khoa': 'Văn phòng Khoa', 
+                    'hanh-chinh': 'Hành chính', 
+                    'phong-chuc-nang': 'Phòng chức năng', 
+                    'hieu-truong': 'Hiệu Trưởng',
+                    'pho-hieu-truong': 'Phó Hiệu Trưởng'
+                };
+                
+                const isBGH = ['hieu-truong', 'pho-hieu-truong'].includes(loc.type);
+
+                // Popup Profile
+                const popupContent = `
+                    <div class="profile-popup p-2">
+                        <div class="flex items-center gap-3 mb-2 border-b pb-2">
+                            <div class="w-10 h-10 rounded-xl ${isBGH ? 'bg-slate-900 text-white' : 'bg-blue-100 text-blue-600'} flex items-center justify-center shrink-0 shadow-sm">
+                                <i class="fas ${isBGH ? 'fa-user-tie' : 'fa-building'} text-sm"></i>
+                            </div>
+                            <div>
+                                <p class="text-[8px] font-black text-slate-400 uppercase leading-none">${isBGH ? 'Ban Giám Hiệu' : typeLabelMap[loc.type]}</p>
+                                <p class="text-xs font-bold text-slate-800 leading-tight">${loc.name}</p>
+                            </div>
+                        </div>
+                        <div class="mb-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            ${isBGH ? `
+                                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">${typeLabelMap[loc.type]}:</p>
+                                <p class="text-[11px] font-extrabold text-blue-700 uppercase">${loc.head || "Chưa cập nhật"}</p>
+                            ` : `
+                                <p class="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Cán bộ phụ trách:</p>
+                                <p class="text-[11px] font-extrabold text-blue-700">${loc.head || "Chưa cập nhật"}</p>
+                                ${loc.deputy ? `<p class="text-[10px] font-bold text-slate-500 mt-0.5 border-t border-slate-200/50 pt-0.5">Phó: ${loc.deputy}</p>` : ''}
+                            `}
+                        </div>
+                        ${loc.mission ? `
+                        <div class="mb-2">
+                            <p class="text-[9px] font-medium text-slate-600 leading-tight italic">"${loc.mission}"</p>
+                        </div>` : ''}
+                        <button onclick="logic.selectLocation('${loc.id}')" class="w-full mt-1 py-2 bg-blue-600 text-white text-[9px] font-black rounded-lg shadow-md uppercase tracking-wider">Xem chỉ đường & Ảnh</button>
                     </div>
                 `;
+
+                // Logic hiển thị Nhãn (Label) trên bản đồ
+                let mapLabel = loc.name; 
+                let boxClass = "bg-blue-600";
+                let labelClass = "";
+                let iconClass = "fa-building";
+
+                if (isBGH) {
+                    mapLabel = loc.head || loc.name; 
+                    boxClass = "box-rector";
+                    labelClass = "label-rector";
+                    iconClass = "fa-user-tie";
+                } else if (loc.type === 'phong-hoc') {
+                    marker = L.marker(loc.coords, {
+                        icon: L.divIcon({
+                            className: 'custom-marker-icon',
+                            html: `<div class="room-dot bg-blue-500"></div>`,
+                            iconSize: [12, 12], iconAnchor: [6, 6]
+                        })
+                    }).bindPopup(popupContent);
+                }
+
+                if (loc.type !== 'phong-hoc') {
+                    marker = L.marker(loc.coords, { 
+                        icon: L.divIcon({
+                            className: 'custom-marker-icon',
+                            html: `<div class="marker-wrapper">
+                                    <div class="marker-icon-box ${boxClass}"><i class="fas ${iconClass}"></i></div>
+                                    <div class="marker-label ${labelClass}">${mapLabel}</div>
+                                   </div>`,
+                            iconSize: [40, 65], iconAnchor: [20, 50]
+                        })
+                    }).bindPopup(popupContent);
+                }
+                
+                marker.on('click', () => {
+                    const select = document.getElementById('destination');
+                    if (select) select.value = loc.id;
+                    logic.updateSidebarInfo(loc);
+                });
+
+                locationMarkersGroup.addLayer(marker);
+            });
+        },
+
+        updateUILists: () => {
+            const select = document.getElementById('destination');
+            const adminList = document.getElementById('admin-list');
+            if (!select || !adminList) return;
+
+            select.innerHTML = '<option value="">-- Bạn muốn đi đâu? --</option>';
+            ["A", "B", "C", "D", "Khác"].forEach(area => {
+                const areaGroup = document.createElement('optgroup');
+                areaGroup.label = `KHU ${area}`;
+                ["Trệt", "1", "2", "3", "4"].forEach(floor => {
+                    const floorRooms = locations.filter(l => l.area === area && l.floor === floor);
+                    if (floorRooms.length > 0) {
+                        floorRooms.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true})).forEach(loc => {
+                            const opt = document.createElement('option');
+                            opt.value = loc.id;
+                            opt.textContent = `T${floor} - ${loc.name}`;
+                            areaGroup.appendChild(opt);
+                        });
+                    }
+                });
+                if (areaGroup.children.length > 0) select.appendChild(areaGroup);
+            });
+
+            adminList.innerHTML = '';
+            locations.sort((a,b) => b.updatedAt - a.updatedAt).forEach(loc => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm";
+                div.innerHTML = `<div><p class="font-bold text-slate-800 text-sm">K${loc.area}-T${loc.floor}-${loc.name}</p></div><div class="flex gap-2"><button onclick="logic.edit('${loc.id}')" class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center"><i class="fas fa-edit"></i></button><button onclick="logic.delete('${loc.id}')" class="w-8 h-8 bg-red-50 text-red-600 rounded-lg flex items-center justify-center"><i class="fas fa-trash"></i></button></div>`;
                 adminList.appendChild(div);
             });
         },
 
-        getCustomStepIcon: (text) => {
-            text = text.toLowerCase();
-            if (text.includes('trái') || text.includes('trai')) return 'fa-arrow-left text-blue-500';
-            if (text.includes('phải') || text.includes('phai')) return 'fa-arrow-right text-blue-500';
-            if (text.includes('thẳng') || text.includes('thang') || text.includes('tiếp tục')) return 'fa-arrow-up text-green-500';
-            if (text.includes('thang máy') || text.includes('thang may')) return 'fa-elevator text-indigo-500';
-            if (text.includes('cầu thang') || text.includes('cau thang') || text.includes('lầu') || text.includes('lau')) return 'fa-stairs text-indigo-500';
-            if (text.includes('đến nơi') || text.includes('đích')) return 'fa-map-marker-alt text-red-500';
-            return 'fa-shoe-prints text-slate-300';
-        },
-
-        selectLocation: (id) => {
-            const loc = locations.find(l => l.id === id);
-            if (!loc) {
-                document.getElementById('navigation-panel').classList.add('hidden');
-                if (currentMarker) map.removeLayer(currentMarker);
-                if (routingControl) map.removeControl(routingControl);
-                return;
+        updateSidebarInfo: (loc) => {
+            const welcomePanel = document.getElementById('welcome-panel');
+            const navPanel = document.getElementById('navigation-panel');
+            if (welcomePanel) welcomePanel.classList.add('hidden');
+            if (navPanel) navPanel.classList.remove('hidden');
+            
+            const isBGH = ['hieu-truong', 'pho-hieu-truong'].includes(loc.type);
+            const badgeMap = { 'phong-hoc': 'badge-classroom', 'vp-khoa': 'badge-faculty', 'hanh-chinh': 'badge-admin', 'phong-chuc-nang': 'badge-func', 'hieu-truong': 'badge-rector', 'pho-hieu-truong': 'badge-rector' };
+            const typeLabelMap = { 'phong-hoc': 'Phòng học', 'vp-khoa': 'Văn phòng Khoa', 'hanh-chinh': 'Hành chính', 'phong-chuc-nang': 'Phòng chức năng', 'hieu-truong': 'Hiệu Trưởng', 'pho-hieu-truong': 'Phó Hiệu Trưởng' };
+            
+            const typeInfo = document.getElementById('room-type-info');
+            if (typeInfo) {
+                typeInfo.innerHTML = `
+                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${badgeMap[loc.type]}">${typeLabelMap[loc.type]}</span>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">Khu ${loc.area} - Tầng ${loc.floor}</span>
+                `;
             }
 
-            document.getElementById('navigation-panel').classList.remove('hidden');
-            document.getElementById('note-content').innerText = loc.note || "Hãy di chuyển theo lối đi hành lang.";
+            const contactCard = document.getElementById('office-contact-card');
+            const rectorDecor = document.getElementById('rector-decoration');
+            const deputyContainer = document.getElementById('deputy-container');
+
+            if (contactCard && loc.type !== 'phong-hoc') {
+                contactCard.classList.remove('hidden');
+                safeSetText('head-name', loc.head || "Chưa cập nhật");
+                safeSetText('room-mission', loc.mission || "Hỗ trợ công tác quản lý và đào tạo.");
+                
+                if (deputyContainer) {
+                    if (loc.deputy) {
+                        deputyContainer.classList.remove('hidden');
+                        safeSetText('deputy-name', loc.deputy);
+                    } else { deputyContainer.classList.add('hidden'); }
+                }
+
+                if (rectorDecor) {
+                    if (isBGH) {
+                        rectorDecor.classList.remove('hidden');
+                        safeSetText('head-title-label', typeLabelMap[loc.type]);
+                        safeSetText('deputy-title-label', "Hỗ trợ chuyên môn");
+                    } else {
+                        rectorDecor.classList.add('hidden');
+                        safeSetText('head-title-label', "Trưởng đơn vị / Trưởng Khoa");
+                        safeSetText('deputy-title-label', "Cấp phó đơn vị");
+                    }
+                }
+            } else if (contactCard) { contactCard.classList.add('hidden'); }
+
+            safeSetText('note-content', loc.name);
             
-            // Image Gallery
             const gallery = document.getElementById('image-gallery');
-            gallery.innerHTML = '';
-            const images = loc.images || [];
-            if (images.length > 0) {
-                images.forEach(url => {
-                    const img = document.createElement('img');
+            const galleryContainer = document.getElementById('image-gallery-container');
+            if (gallery && galleryContainer) {
+                gallery.innerHTML = '';
+                const imgs = loc.images || [];
+                imgs.forEach(url => {
+                    const img = document.createElement('img'); 
                     img.src = logic.formatImageLink(url);
-                    img.onerror = () => img.style.display = 'none';
+                    img.onerror = () => img.style.display = 'none'; 
                     gallery.appendChild(img);
                 });
-                gallery.classList.remove('hidden');
-            } else {
-                gallery.classList.add('hidden');
+                galleryContainer.classList.toggle('hidden', imgs.length === 0);
             }
 
-            // Split note into steps based on new lines or semicolons
             const stepList = document.getElementById('step-list');
-            stepList.innerHTML = '';
-            const rawNote = loc.note || "";
-            const customSteps = rawNote.split(/[\n;]+/).map(s => s.trim()).filter(s => s !== "");
-
-            if (customSteps.length > 0) {
-                customSteps.forEach((stepText, idx) => {
-                    const iconClass = logic.getCustomStepIcon(stepText);
-                    const stepDiv = document.createElement('div');
-                    stepDiv.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 step-card shadow-sm";
-                    stepDiv.innerHTML = `
-                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
-                            <i class="fas ${iconClass} text-lg"></i>
-                        </div>
-                        <p class="text-sm font-bold text-slate-700 leading-tight">${stepText}</p>
-                    `;
-                    stepList.appendChild(stepDiv);
+            if (stepList) {
+                stepList.innerHTML = '';
+                const steps = (loc.note || "").split(/[\n;]+/).map(s => s.trim()).filter(s => s !== "");
+                steps.forEach(text => {
+                    const div = document.createElement('div');
+                    div.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm";
+                    div.innerHTML = `<div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shrink-0 border border-slate-100 shadow-sm text-blue-600"><i class="fas fa-chevron-right"></i></div><p class="text-sm font-bold text-slate-700 leading-tight">${text}</p>`;
+                    stepList.appendChild(div);
                 });
-            } else {
-                stepList.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-4">Chưa có chỉ dẫn chi tiết cho vị trí này.</p>';
             }
 
-            // Routing logic for distance only
             if (routingControl) map.removeControl(routingControl);
             routingControl = L.Routing.control({
                 waypoints: [L.latLng(schoolGate[0], schoolGate[1]), L.latLng(loc.coords[0], loc.coords[1])],
                 lineOptions: { styles: [{ color: '#2563eb', opacity: 0, weight: 0 }] },
-                createMarker: () => null,
-                addWaypoints: false,
-                draggableWaypoints: false,
-                show: false
+                createMarker: () => null, show: false
             }).addTo(map);
-
             routingControl.on('routesfound', (e) => {
-                const summary = e.routes[0].summary;
-                document.getElementById('distance-val').innerText = Math.round(summary.totalDistance) + ' m';
-                map.flyTo(loc.coords, 20);
+                safeSetText('distance-val', Math.round(e.routes[0].summary.totalDistance) + ' m');
+                map.flyTo(loc.coords, 21);
             });
 
-            if (currentMarker) map.removeLayer(currentMarker);
-            currentMarker = L.marker(loc.coords).addTo(map).bindPopup(`<b class='text-blue-600'>${loc.name}</b>`).openPopup();
-            
-            document.getElementById('open-google-maps').href = `https://www.google.com/maps/dir/?api=1&origin=${schoolGate[0]},${schoolGate[1]}&destination=${loc.coords[0]},${loc.coords[1]}&travelmode=walking`;
+            const googleBtn = document.getElementById('open-google-maps');
+            if (googleBtn) {
+                googleBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${schoolGate[0]},${schoolGate[1]}&destination=${loc.coords[0]},${loc.coords[1]}&travelmode=walking`;
+            }
+        },
+
+        selectLocation: (id) => {
+            const loc = locations.find(l => l.id === id);
+            if (!loc) return;
+            locationMarkersGroup.eachLayer((marker) => {
+                if (marker.getLatLng().lat === loc.coords[0] && marker.getLatLng().lng === loc.coords[1]) {
+                    marker.openPopup();
+                }
+            });
+            logic.updateSidebarInfo(loc);
         },
 
         handleSaveLocation: async (e) => {
             e.preventDefault();
             const id = document.getElementById('form-id').value || crypto.randomUUID();
-            const rawImages = document.getElementById('form-images').value;
-            const imagesArray = rawImages ? rawImages.split(',').map(s => s.trim()).filter(s => s !== "") : [];
-
             const data = {
                 name: document.getElementById('form-name').value,
+                area: document.getElementById('form-area').value,
+                floor: document.getElementById('form-floor').value,
+                type: document.getElementById('form-type').value,
                 coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
+                head: document.getElementById('form-head').value,
+                deputy: document.getElementById('form-deputy').value,
+                mission: document.getElementById('form-mission').value,
                 note: document.getElementById('form-note').value,
-                images: imagesArray,
+                images: document.getElementById('form-images').value.split(',').map(s => s.trim()).filter(s => s !== ""),
                 updatedAt: Date.now()
             };
-
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
-                logic.resetForm();
-                alert("Đã cập nhật dữ liệu thành công!");
-            } catch (err) {
-                alert("Lỗi: " + err.message);
-            }
+                logic.resetForm(); alert("Dữ liệu đồng bộ thành công!");
+            } catch (err) { alert("Lỗi: " + err.message); }
         },
 
-        resetForm: () => {
-            document.getElementById('location-form').reset();
-            document.getElementById('form-id').value = '';
+        resetForm: () => { 
+            const form = document.getElementById('location-form');
+            if (form) form.reset();
+            const idInput = document.getElementById('form-id');
+            if (idInput) idInput.value = ''; 
         },
 
         edit: (id) => {
             const loc = locations.find(l => l.id === id);
+            if (!loc) return;
             document.getElementById('form-id').value = loc.id;
             document.getElementById('form-name').value = loc.name;
+            document.getElementById('form-area').value = loc.area;
+            document.getElementById('form-floor').value = loc.floor;
+            document.getElementById('form-type').value = loc.type;
             document.getElementById('form-lat').value = loc.coords[0];
             document.getElementById('form-lng').value = loc.coords[1];
-            document.getElementById('form-note').value = loc.note;
+            document.getElementById('form-head').value = loc.head || "";
+            document.getElementById('form-deputy').value = loc.deputy || "";
+            document.getElementById('form-mission').value = loc.mission || "";
+            document.getElementById('form-note').value = loc.note || "";
             document.getElementById('form-images').value = (loc.images || []).join(', ');
             window.scrollTo({ top: 0, behavior: 'smooth' });
         },
 
-        delete: async (id) => {
-            if(confirm("Bạn có chắc muốn xóa địa điểm này?")) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id));
-            }
-        }
+        delete: async (id) => { if(confirm("Xóa địa điểm?")) { await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id)); } }
     };
 
     window.onload = logic.init;
