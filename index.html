@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nam Sài Gòn Navigator - Vercel Demo</title>
+    <title>GOOGLE MAPS CDBKNSG - DEMO</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -60,6 +60,13 @@
         }
 
         .admin-active-map { cursor: crosshair !important; }
+        
+        .step-card {
+            transition: all 0.2s ease;
+        }
+        .step-card:hover {
+            transform: translateX(4px);
+        }
     </style>
 </head>
 <body class="overflow-x-hidden antialiased text-slate-900">
@@ -72,7 +79,7 @@
         <!-- Header -->
         <header class="p-5 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg">
             <div>
-                <h1 class="text-xl font-black tracking-tighter leading-none">GOOGLE MAPS CDBKNSG</h1>
+                <h1 class="text-xl font-black tracking-tighter leading-none">GOOGLE MAPS CĐBKNSG</h1>
                 <p class="text-[10px] opacity-70 uppercase tracking-widest font-bold mt-1">Chi Đoàn Giáo Viên</p>
             </div>
             <button id="admin-toggle-btn" onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
@@ -126,12 +133,14 @@
                             </div>
                         </div>
 
-                        <!-- Steps -->
+                        <!-- Custom Navigation Steps -->
                         <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
                             <h3 class="font-bold text-[10px] text-slate-400 uppercase mb-4 tracking-wider flex items-center gap-2">
-                                <i class="fas fa-list-ol"></i> Hướng dẫn chi tiết
+                                <i class="fas fa-route text-blue-600"></i> Hướng dẫn chi tiết (Tùy chỉnh)
                             </h3>
-                            <div id="step-list" class="space-y-5"></div>
+                            <div id="step-list" class="space-y-4">
+                                <!-- Custom Steps will be injected here -->
+                            </div>
                         </div>
 
                         <a id="open-google-maps" href="#" target="_blank" class="flex w-full bg-slate-900 text-white font-black py-5 rounded-2xl items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95">
@@ -148,9 +157,16 @@
                     <button onclick="ui.logout()" class="text-[10px] font-black text-red-500 bg-red-100 px-4 py-2 rounded-xl uppercase tracking-widest hover:bg-red-200 transition-all">Đăng xuất</button>
                 </div>
 
-                <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-4">
-                    <p class="text-[10px] text-amber-800 font-bold leading-tight">
-                        <i class="fas fa-lightbulb mr-1"></i> Mẹo: Click trực tiếp vào bản đồ để lấy tọa độ Lat/Lng tự động vào form.
+                <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl mb-4">
+                    <p class="text-[10px] text-blue-800 font-bold leading-tight uppercase tracking-widest mb-1">
+                        <i class="fas fa-magic mr-1"></i> Cách tạo chỉ dẫn có icon:
+                    </p>
+                    <p class="text-[9px] text-blue-600 leading-relaxed">
+                        Hãy viết mỗi hướng dẫn trên 1 dòng. Hệ thống tự nhận diện từ khóa: <br>
+                        - <b>"Rẽ trái"</b>: Hiện mũi tên trái <br>
+                        - <b>"Rẽ phải"</b>: Hiện mũi tên phải <br>
+                        - <b>"Đi thẳng"</b>: Hiện mũi tên lên <br>
+                        - <b>"Cầu thang/Thang máy"</b>: Hiện icon thang
                     </p>
                 </div>
 
@@ -172,11 +188,11 @@
                             </div>
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Ghi chú hướng dẫn di chuyển</label>
-                            <textarea id="form-note" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-28" placeholder="VD: Đi thẳng qua sảnh chính, rẽ phải tại phòng giáo vụ..."></textarea>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Chỉ dẫn cụ thể (Tách dòng để chia bước)</label>
+                            <textarea id="form-note" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-32" placeholder="Bước 1: Đi thẳng 20m...&#10;Bước 2: Rẽ trái tại sảnh...&#10;Bước 3: Đi lên lầu 1..."></textarea>
                         </div>
                         <div>
-                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Links ảnh (Google Drive, v.v. - Cách nhau bằng dấu phẩy)</label>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Links ảnh (Cách nhau bằng dấu phẩy)</label>
                             <textarea id="form-images" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-20" placeholder="https://drive.google.com/..., https://..."></textarea>
                         </div>
                     </div>
@@ -187,14 +203,13 @@
                 <div class="pt-6">
                     <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-1">Danh sách đã thêm</h3>
                     <div id="admin-list" class="space-y-3">
-                        <!-- Admin list populated here -->
                     </div>
                 </div>
             </div>
         </div>
 
         <footer class="p-6 border-t border-slate-100 bg-white">
-            <p class="text-[9px] text-slate-400 font-bold text-center uppercase tracking-[0.3em]">Demo test by Kenny &copy; 2026</p>
+            <p class="text-[9px] text-slate-400 font-bold text-center uppercase tracking-[0.3em]">Bảng Demo Test By Kenny &copy; 2026</p>
         </footer>
     </aside>
 
@@ -248,7 +263,6 @@
     import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
-    // Cấu hình Firebase chính thức từ khách hàng
     const firebaseConfig = {
         apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
         authDomain: "alook-26a1f.firebaseapp.com",
@@ -263,14 +277,12 @@
     const auth = getAuth(app);
     const appId = 'nsg-navigator-v2';
 
-    // Global State
     let map, currentMarker, routingControl;
     let isSatellite = true;
     let isAdmin = false;
     let locations = [];
     const schoolGate = [10.735473, 106.680579];
 
-    // Layers
     const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'] });
     const googleRoadmap = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'] });
 
@@ -289,7 +301,6 @@
         },
         toggleAdminLogin: () => {
             if (isAdmin) {
-                // Already logged in, toggle icons or views
                 ui.logout();
             } else {
                 document.getElementById('login-modal').classList.remove('hidden');
@@ -326,7 +337,6 @@
             googleSatellite.addTo(map);
             L.marker(schoolGate).addTo(map).bindPopup("<div class='font-bold text-center'>Cổng chính<br>Nam Sài Gòn</div>").openPopup();
             
-            // Map Click logic for Admin
             map.on('click', (e) => {
                 if (isAdmin) {
                     document.getElementById('form-lat').value = e.latlng.lat.toFixed(7);
@@ -391,6 +401,17 @@
             });
         },
 
+        getCustomStepIcon: (text) => {
+            text = text.toLowerCase();
+            if (text.includes('trái') || text.includes('trai')) return 'fa-arrow-left text-blue-500';
+            if (text.includes('phải') || text.includes('phai')) return 'fa-arrow-right text-blue-500';
+            if (text.includes('thẳng') || text.includes('thang') || text.includes('tiếp tục')) return 'fa-arrow-up text-green-500';
+            if (text.includes('thang máy') || text.includes('thang may')) return 'fa-elevator text-indigo-500';
+            if (text.includes('cầu thang') || text.includes('cau thang') || text.includes('lầu') || text.includes('lau')) return 'fa-stairs text-indigo-500';
+            if (text.includes('đến nơi') || text.includes('đích')) return 'fa-map-marker-alt text-red-500';
+            return 'fa-shoe-prints text-slate-300';
+        },
+
         selectLocation: (id) => {
             const loc = locations.find(l => l.id === id);
             if (!loc) {
@@ -401,7 +422,7 @@
             }
 
             document.getElementById('navigation-panel').classList.remove('hidden');
-            document.getElementById('note-content').innerText = loc.note || "Đã xác định vị trí phòng học.";
+            document.getElementById('note-content').innerText = loc.note || "Hãy di chuyển theo lối đi hành lang.";
             
             // Image Gallery
             const gallery = document.getElementById('image-gallery');
@@ -419,7 +440,30 @@
                 gallery.classList.add('hidden');
             }
 
-            // Routing logic (Hide polyline but get distance)
+            // Split note into steps based on new lines or semicolons
+            const stepList = document.getElementById('step-list');
+            stepList.innerHTML = '';
+            const rawNote = loc.note || "";
+            const customSteps = rawNote.split(/[\n;]+/).map(s => s.trim()).filter(s => s !== "");
+
+            if (customSteps.length > 0) {
+                customSteps.forEach((stepText, idx) => {
+                    const iconClass = logic.getCustomStepIcon(stepText);
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 step-card shadow-sm";
+                    stepDiv.innerHTML = `
+                        <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm shrink-0 border border-slate-100">
+                            <i class="fas ${iconClass} text-lg"></i>
+                        </div>
+                        <p class="text-sm font-bold text-slate-700 leading-tight">${stepText}</p>
+                    `;
+                    stepList.appendChild(stepDiv);
+                });
+            } else {
+                stepList.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-4">Chưa có chỉ dẫn chi tiết cho vị trí này.</p>';
+            }
+
+            // Routing logic for distance only
             if (routingControl) map.removeControl(routingControl);
             routingControl = L.Routing.control({
                 waypoints: [L.latLng(schoolGate[0], schoolGate[1]), L.latLng(loc.coords[0], loc.coords[1])],
@@ -432,20 +476,7 @@
 
             routingControl.on('routesfound', (e) => {
                 const summary = e.routes[0].summary;
-                const instructions = e.routes[0].instructions;
                 document.getElementById('distance-val').innerText = Math.round(summary.totalDistance) + ' m';
-                
-                const stepList = document.getElementById('step-list');
-                stepList.innerHTML = '';
-                instructions.forEach((s, idx) => {
-                    const stepDiv = document.createElement('div');
-                    stepDiv.className = "flex gap-4 items-start";
-                    stepDiv.innerHTML = `
-                        <span class="w-6 h-6 rounded-lg bg-blue-50 text-[10px] font-black flex items-center justify-center text-blue-600 shrink-0 mt-0.5 border border-blue-100">${idx + 1}</span>
-                        <p class="text-sm font-semibold text-slate-700 leading-tight">${s.text}</p>
-                    `;
-                    stepList.appendChild(stepDiv);
-                });
                 map.flyTo(loc.coords, 20);
             });
 
@@ -472,9 +503,9 @@
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
                 logic.resetForm();
-                alert("Đã cập nhật dữ liệu!");
+                alert("Đã cập nhật dữ liệu thành công!");
             } catch (err) {
-                alert("Lỗi Firestore: " + err.message);
+                alert("Lỗi: " + err.message);
             }
         },
 
@@ -495,7 +526,7 @@
         },
 
         delete: async (id) => {
-            if(confirm("Xác nhận xóa địa điểm này?")) {
+            if(confirm("Bạn có chắc muốn xóa địa điểm này?")) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id));
             }
         }
