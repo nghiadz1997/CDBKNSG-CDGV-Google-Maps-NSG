@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nam Sài Gòn Navigator - Vercel Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Leaflet & Routing -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        
+        #map { height: 100%; width: 100%; z-index: 1; }
+        
+        .map-container {
+            height: 40vh;
+            min-height: 300px;
+        }
+
+        @media (min-width: 1024px) {
+            .map-container { height: 100vh; }
+        }
+
+        .leaflet-routing-container { display: none !important; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-primary:active { transform: scale(0.96); }
+
+        .image-gallery {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 4px 0 12px 0;
+            scroll-snap-type: x mandatory;
+        }
+        .image-gallery img {
+            flex: 0 0 85%;
+            scroll-snap-align: start;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 1.25rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        @media (min-width: 1024px) {
+            .image-gallery img { flex: 0 0 100%; }
+        }
+
+        .admin-active-map { cursor: crosshair !important; }
+    </style>
+</head>
+<body class="overflow-x-hidden antialiased text-slate-900">
+
+<div id="app" class="flex flex-col lg:flex-row min-h-screen relative">
+    
+    <!-- SIDEBAR CONTROLS -->
+    <aside class="w-full lg:w-[400px] xl:w-[450px] flex flex-col z-20 shadow-2xl bg-white lg:h-screen overflow-hidden order-2 lg:order-1 border-r border-slate-200">
+        
+        <!-- Header -->
+        <header class="p-5 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg">
+            <div>
+                <h1 class="text-xl font-black tracking-tighter leading-none">GOOGLE MAPS CDBKNSG</h1>
+                <p class="text-[10px] opacity-70 uppercase tracking-widest font-bold mt-1">Chi Đoàn Giáo Viên</p>
+            </div>
+            <button id="admin-toggle-btn" onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                <i id="admin-icon" class="fas fa-user-shield"></i>
+            </button>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <div class="flex-1 overflow-y-auto">
+            
+            <!-- User Interface -->
+            <div id="user-view" class="p-5 space-y-6">
+                <div class="space-y-4">
+                    <div class="relative">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase mb-2 tracking-widest ml-1">Tìm vị trí phòng/khu vực</label>
+                        <div class="relative">
+                            <select id="destination" onchange="logic.selectLocation(this.value)" class="w-full p-4 pl-12 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none bg-slate-50 text-slate-800 font-bold appearance-none cursor-pointer transition-all shadow-sm">
+                                <option value="">-- Chọn địa điểm --</option>
+                            </select>
+                            <i class="fas fa-map-marker-alt absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
+                            <i class="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-xs pointer-events-none"></i>
+                        </div>
+                    </div>
+
+                    <!-- Navigation Result Panel -->
+                    <div id="navigation-panel" class="hidden space-y-5 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <!-- Distance Info -->
+                        <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 rounded-[2rem] text-white flex items-center justify-between shadow-xl shadow-blue-100">
+                            <div class="flex items-center gap-4">
+                                <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                                    <i class="fas fa-walking text-xl"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold uppercase tracking-widest opacity-80">Quãng đường</p>
+                                    <p class="text-sm font-bold">Từ cổng chính</p>
+                                </div>
+                            </div>
+                            <span id="distance-val" class="text-3xl font-black tracking-tighter">0 m</span>
+                        </div>
+
+                        <!-- Ghi chú & Gallery -->
+                        <div class="bg-slate-50 rounded-[2rem] p-6 border border-slate-100">
+                            <div class="flex items-center gap-2 mb-3">
+                                <i class="fas fa-info-circle text-blue-500"></i>
+                                <h3 class="font-bold text-[10px] text-slate-500 uppercase tracking-wider">Thông tin & Hình ảnh</h3>
+                            </div>
+                            <p id="note-content" class="text-sm text-slate-700 leading-relaxed font-medium mb-5 italic"></p>
+                            
+                            <div id="image-gallery" class="image-gallery hidden">
+                                <!-- Images injected by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Steps -->
+                        <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                            <h3 class="font-bold text-[10px] text-slate-400 uppercase mb-4 tracking-wider flex items-center gap-2">
+                                <i class="fas fa-list-ol"></i> Hướng dẫn chi tiết
+                            </h3>
+                            <div id="step-list" class="space-y-5"></div>
+                        </div>
+
+                        <a id="open-google-maps" href="#" target="_blank" class="flex w-full bg-slate-900 text-white font-black py-5 rounded-2xl items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95">
+                            <i class="fab fa-google text-lg text-blue-400"></i> MỞ GOOGLE MAPS
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Interface -->
+            <div id="admin-panel" class="hidden p-5 space-y-6 bg-slate-50/50 min-h-full">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                    <h2 class="text-lg font-black text-blue-600 uppercase tracking-tighter">Quản trị Location</h2>
+                    <button onclick="ui.logout()" class="text-[10px] font-black text-red-500 bg-red-100 px-4 py-2 rounded-xl uppercase tracking-widest hover:bg-red-200 transition-all">Đăng xuất</button>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-4">
+                    <p class="text-[10px] text-amber-800 font-bold leading-tight">
+                        <i class="fas fa-lightbulb mr-1"></i> Mẹo: Click trực tiếp vào bản đồ để lấy tọa độ Lat/Lng tự động vào form.
+                    </p>
+                </div>
+
+                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-4">
+                    <input type="hidden" id="form-id">
+                    <div class="space-y-4 bg-white p-5 rounded-[2rem] border border-slate-200 shadow-sm">
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Tên phòng học / Khu vực</label>
+                            <input type="text" id="form-name" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 transition-all" placeholder="VD: A0.1">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Vĩ độ (Lat)</label>
+                                <input type="number" step="any" id="form-lat" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 transition-all" placeholder="10.73...">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Kinh độ (Lng)</label>
+                                <input type="number" step="any" id="form-lng" required class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 transition-all" placeholder="106.6...">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Ghi chú hướng dẫn di chuyển</label>
+                            <textarea id="form-note" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-28" placeholder="VD: Đi thẳng qua sảnh chính, rẽ phải tại phòng giáo vụ..."></textarea>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-slate-400 uppercase ml-1">Links ảnh (Google Drive, v.v. - Cách nhau bằng dấu phẩy)</label>
+                            <textarea id="form-images" class="w-full p-4 mt-1 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 bg-slate-50 h-20" placeholder="https://drive.google.com/..., https://..."></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 uppercase tracking-widest">Lưu dữ liệu Cloud</button>
+                    <button type="button" onclick="logic.resetForm()" class="w-full text-slate-400 font-bold text-xs uppercase py-2">Hủy / Reset Form</button>
+                </form>
+
+                <div class="pt-6">
+                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-1">Danh sách đã thêm</h3>
+                    <div id="admin-list" class="space-y-3">
+                        <!-- Admin list populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="p-6 border-t border-slate-100 bg-white">
+            <p class="text-[9px] text-slate-400 font-bold text-center uppercase tracking-[0.3em]">Demo test by Kenny &copy; 2026</p>
+        </footer>
+    </aside>
+
+    <!-- MAP INTERFACE -->
+    <main class="flex-1 map-container order-1 lg:order-2 sticky top-0 relative overflow-hidden">
+        <div id="map"></div>
+        
+        <!-- Floating UI over Map -->
+        <div class="absolute top-6 right-6 z-[1000] flex flex-col gap-3">
+            <button onclick="ui.toggleLayer()" class="bg-white/90 backdrop-blur-md p-4 rounded-[1.5rem] shadow-2xl border border-white hover:scale-105 transition-all text-blue-600 flex items-center justify-center">
+                <i id="layer-icon" class="fas fa-satellite text-xl"></i>
+            </button>
+            <button onclick="logic.recenter()" class="bg-white/90 backdrop-blur-md p-4 rounded-[1.5rem] shadow-2xl border border-white hover:scale-105 transition-all text-slate-600 flex items-center justify-center">
+                <i class="fas fa-crosshairs text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- Status Indicator -->
+        <div class="absolute bottom-6 left-6 z-[1000] lg:flex hidden">
+            <div class="bg-slate-900/80 backdrop-blur-md px-5 py-3 rounded-full border border-white/20 shadow-2xl flex items-center gap-3">
+                <div class="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+                <span class="text-xs font-bold text-white uppercase tracking-widest">Campus Live Data</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- AUTH MODAL -->
+    <div id="login-modal" class="fixed inset-0 z-[100] bg-slate-900/70 flex items-center justify-center p-4 hidden backdrop-blur-sm animate-in fade-in duration-300">
+        <div class="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-2xl border border-slate-100">
+            <div class="text-center mb-10">
+                <div class="w-24 h-24 bg-blue-50 text-blue-600 rounded-[2.5rem] flex items-center justify-center mx-auto mb-5 border-4 border-white shadow-xl shadow-blue-100">
+                    <i class="fas fa-lock text-4xl"></i>
+                </div>
+                <h2 class="text-3xl font-black text-slate-800 tracking-tighter">Admin Login</h2>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">Dành cho cán bộ quản lý Navigator</p>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="admin-user" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none font-bold text-center transition-all" placeholder="Username">
+                <input type="password" id="admin-pass" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none font-bold text-center transition-all" placeholder="Password">
+                <button onclick="ui.login()" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-200 mt-4 active:scale-95 transition-transform uppercase tracking-widest">Đăng nhập</button>
+                <button onclick="ui.toggleAdminLogin()" class="w-full text-slate-400 font-black text-[10px] uppercase py-2 tracking-widest mt-2">Đóng lại</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+    // Cấu hình Firebase chính thức từ khách hàng
+    const firebaseConfig = {
+        apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk",
+        authDomain: "alook-26a1f.firebaseapp.com",
+        projectId: "alook-26a1f",
+        storageBucket: "alook-26a1f.appspot.com",
+        messagingSenderId: "201575321450",
+        appId: "1:201575321450:web:3f00cdd591af0d5e52df13"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const appId = 'nsg-navigator-v2';
+
+    // Global State
+    let map, currentMarker, routingControl;
+    let isSatellite = true;
+    let isAdmin = false;
+    let locations = [];
+    const schoolGate = [10.735473, 106.680579];
+
+    // Layers
+    const googleSatellite = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'] });
+    const googleRoadmap = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22, subdomains:['mt0','mt1','mt2','mt3'] });
+
+    window.ui = {
+        toggleLayer: () => {
+            isSatellite = !isSatellite;
+            if (isSatellite) {
+                map.removeLayer(googleRoadmap);
+                googleSatellite.addTo(map);
+                document.getElementById('layer-icon').className = "fas fa-satellite";
+            } else {
+                map.removeLayer(googleSatellite);
+                googleRoadmap.addTo(map);
+                document.getElementById('layer-icon').className = "fas fa-layer-group";
+            }
+        },
+        toggleAdminLogin: () => {
+            if (isAdmin) {
+                // Already logged in, toggle icons or views
+                ui.logout();
+            } else {
+                document.getElementById('login-modal').classList.remove('hidden');
+            }
+        },
+        login: () => {
+            const u = document.getElementById('admin-user').value;
+            const p = document.getElementById('admin-pass').value;
+            if (u === 'admin' && p === 'Nsg@2026') {
+                isAdmin = true;
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('user-view').classList.add('hidden');
+                document.getElementById('admin-panel').classList.remove('hidden');
+                document.getElementById('admin-icon').className = "fas fa-sign-out-alt";
+                document.getElementById('map').classList.add('admin-active-map');
+                document.getElementById('admin-user').value = '';
+                document.getElementById('admin-pass').value = '';
+            } else {
+                alert("Thông tin đăng nhập sai!");
+            }
+        },
+        logout: () => {
+            isAdmin = false;
+            document.getElementById('admin-panel').classList.add('hidden');
+            document.getElementById('user-view').classList.remove('hidden');
+            document.getElementById('admin-icon').className = "fas fa-user-shield";
+            document.getElementById('map').classList.remove('admin-active-map');
+        }
+    };
+
+    window.logic = {
+        init: async () => {
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView(schoolGate, 19);
+            googleSatellite.addTo(map);
+            L.marker(schoolGate).addTo(map).bindPopup("<div class='font-bold text-center'>Cổng chính<br>Nam Sài Gòn</div>").openPopup();
+            
+            // Map Click logic for Admin
+            map.on('click', (e) => {
+                if (isAdmin) {
+                    document.getElementById('form-lat').value = e.latlng.lat.toFixed(7);
+                    document.getElementById('form-lng').value = e.latlng.lng.toFixed(7);
+                }
+            });
+
+            await signInAnonymously(auth);
+            logic.listenToFirestore();
+        },
+
+        recenter: () => {
+            map.flyTo(schoolGate, 19);
+        },
+
+        formatImageLink: (url) => {
+            if (!url) return "";
+            url = url.trim();
+            const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/) || 
+                             url.match(/drive\.google\.com\/open\?id=([^\&]+)/);
+            if (driveMatch) return `https://drive.google.com/uc?export=view&id=${driveMatch[1]}`;
+            return url;
+        },
+
+        listenToFirestore: () => {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'locations');
+            onSnapshot(colRef, (snapshot) => {
+                locations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                logic.updateUI();
+            });
+        },
+
+        updateUI: () => {
+            const select = document.getElementById('destination');
+            const adminList = document.getElementById('admin-list');
+            
+            const currentVal = select.value;
+            select.innerHTML = '<option value="">-- Chọn địa điểm --</option>';
+            locations.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true})).forEach(loc => {
+                const opt = document.createElement('option');
+                opt.value = loc.id;
+                opt.textContent = loc.name;
+                select.appendChild(opt);
+            });
+            select.value = currentVal;
+
+            adminList.innerHTML = '';
+            locations.forEach(loc => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center p-4 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md";
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-slate-800 text-sm">${loc.name}</p>
+                        <p class="text-[9px] text-slate-400 font-medium uppercase tracking-widest">${loc.coords[0].toFixed(4)}, ${loc.coords[1].toFixed(4)}</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="logic.edit('${loc.id}')" class="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl text-xs flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-edit"></i></button>
+                        <button onclick="logic.delete('${loc.id}')" class="w-9 h-9 bg-red-50 text-red-600 rounded-xl text-xs flex items-center justify-center hover:bg-red-600 hover:text-white transition-all"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+                adminList.appendChild(div);
+            });
+        },
+
+        selectLocation: (id) => {
+            const loc = locations.find(l => l.id === id);
+            if (!loc) {
+                document.getElementById('navigation-panel').classList.add('hidden');
+                if (currentMarker) map.removeLayer(currentMarker);
+                if (routingControl) map.removeControl(routingControl);
+                return;
+            }
+
+            document.getElementById('navigation-panel').classList.remove('hidden');
+            document.getElementById('note-content').innerText = loc.note || "Đã xác định vị trí phòng học.";
+            
+            // Image Gallery
+            const gallery = document.getElementById('image-gallery');
+            gallery.innerHTML = '';
+            const images = loc.images || [];
+            if (images.length > 0) {
+                images.forEach(url => {
+                    const img = document.createElement('img');
+                    img.src = logic.formatImageLink(url);
+                    img.onerror = () => img.style.display = 'none';
+                    gallery.appendChild(img);
+                });
+                gallery.classList.remove('hidden');
+            } else {
+                gallery.classList.add('hidden');
+            }
+
+            // Routing logic (Hide polyline but get distance)
+            if (routingControl) map.removeControl(routingControl);
+            routingControl = L.Routing.control({
+                waypoints: [L.latLng(schoolGate[0], schoolGate[1]), L.latLng(loc.coords[0], loc.coords[1])],
+                lineOptions: { styles: [{ color: '#2563eb', opacity: 0, weight: 0 }] },
+                createMarker: () => null,
+                addWaypoints: false,
+                draggableWaypoints: false,
+                show: false
+            }).addTo(map);
+
+            routingControl.on('routesfound', (e) => {
+                const summary = e.routes[0].summary;
+                const instructions = e.routes[0].instructions;
+                document.getElementById('distance-val').innerText = Math.round(summary.totalDistance) + ' m';
+                
+                const stepList = document.getElementById('step-list');
+                stepList.innerHTML = '';
+                instructions.forEach((s, idx) => {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = "flex gap-4 items-start";
+                    stepDiv.innerHTML = `
+                        <span class="w-6 h-6 rounded-lg bg-blue-50 text-[10px] font-black flex items-center justify-center text-blue-600 shrink-0 mt-0.5 border border-blue-100">${idx + 1}</span>
+                        <p class="text-sm font-semibold text-slate-700 leading-tight">${s.text}</p>
+                    `;
+                    stepList.appendChild(stepDiv);
+                });
+                map.flyTo(loc.coords, 20);
+            });
+
+            if (currentMarker) map.removeLayer(currentMarker);
+            currentMarker = L.marker(loc.coords).addTo(map).bindPopup(`<b class='text-blue-600'>${loc.name}</b>`).openPopup();
+            
+            document.getElementById('open-google-maps').href = `https://www.google.com/maps/dir/?api=1&origin=${schoolGate[0]},${schoolGate[1]}&destination=${loc.coords[0]},${loc.coords[1]}&travelmode=walking`;
+        },
+
+        handleSaveLocation: async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('form-id').value || crypto.randomUUID();
+            const rawImages = document.getElementById('form-images').value;
+            const imagesArray = rawImages ? rawImages.split(',').map(s => s.trim()).filter(s => s !== "") : [];
+
+            const data = {
+                name: document.getElementById('form-name').value,
+                coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
+                note: document.getElementById('form-note').value,
+                images: imagesArray,
+                updatedAt: Date.now()
+            };
+
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
+                logic.resetForm();
+                alert("Đã cập nhật dữ liệu!");
+            } catch (err) {
+                alert("Lỗi Firestore: " + err.message);
+            }
+        },
+
+        resetForm: () => {
+            document.getElementById('location-form').reset();
+            document.getElementById('form-id').value = '';
+        },
+
+        edit: (id) => {
+            const loc = locations.find(l => l.id === id);
+            document.getElementById('form-id').value = loc.id;
+            document.getElementById('form-name').value = loc.name;
+            document.getElementById('form-lat').value = loc.coords[0];
+            document.getElementById('form-lng').value = loc.coords[1];
+            document.getElementById('form-note').value = loc.note;
+            document.getElementById('form-images').value = (loc.images || []).join(', ');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+
+        delete: async (id) => {
+            if(confirm("Xác nhận xóa địa điểm này?")) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id));
+            }
+        }
+    };
+
+    window.onload = logic.init;
+</script>
+
+</body>
+</html>
