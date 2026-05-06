@@ -182,9 +182,6 @@
                                         <p id="deputy-name" class="text-base font-extrabold text-slate-800"></p>
                                     </div>
                                 </div>
-                                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p id="room-mission" class="text-xs font-semibold text-slate-600 leading-relaxed"></p>
-                                </div>
                             </div>
                         </div>
 
@@ -244,7 +241,6 @@
                         </div>
                         <input type="text" id="form-head" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50" placeholder="Người phụ trách">
                         <input type="text" id="form-deputy" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50" placeholder="Cấp phó">
-                        <textarea id="form-mission" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50" placeholder="Nhiệm vụ..."></textarea>
                         <textarea id="form-note" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 h-28" placeholder="Hướng dẫn di chuyển..."></textarea>
                         <textarea id="form-images" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50" placeholder="Link ảnh (cách nhau dấu phẩy)"></textarea>
                     </div>
@@ -536,7 +532,7 @@
                 const hcList = locations.filter(l => ['hanh-chinh', 'vp-khoa', 'phong-chuc-nang'].includes(l.type) && l.floor === f);
                 if (hcList.length > 0) {
                     const group = document.createElement('optgroup');
-                    group.label = `📂 KHỐI HÀNH CHÍNH - LẦU ${f === 'Trệt' ? 'TRỆT' : f}`;
+                    group.label = `📂 KHỐI HÀNH CHÍNH - ${f === 'Trệt' ? 'TRỆT' : 'LẦU ' + f}`;
                     hcList.sort((a,b) => a.name.localeCompare(b.name)).forEach(loc => {
                         const opt = document.createElement('option'); opt.value = loc.id; opt.textContent = loc.name;
                         group.appendChild(opt);
@@ -551,7 +547,7 @@
                     const roomList = locations.filter(l => l.type === 'phong-hoc' && l.area === a && l.floor === f);
                     if (roomList.length > 0) {
                         const group = document.createElement('optgroup');
-                        group.label = `📖 PHÒNG HỌC KHU ${a} - LẦU ${f === 'Trệt' ? 'TRỆT' : f}`;
+                        group.label = `📖 PHÒNG HỌC KHU ${a} - ${f === 'Trệt' ? 'TRỆT' : 'LẦU ' + f}`;
                         roomList.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true})).forEach(loc => {
                             const opt = document.createElement('option'); opt.value = loc.id; opt.textContent = loc.name;
                             group.appendChild(opt);
@@ -601,13 +597,13 @@
             const badgeMap = { 'phong-hoc': 'badge-classroom', 'vp-khoa': 'badge-faculty', 'hanh-chinh': 'badge-admin', 'phong-chuc-nang': 'badge-func', 'hieu-truong': 'badge-rector', 'pho-hieu-truong': 'badge-rector' };
             const typeLabelMap = { 'phong-hoc': 'Phòng học', 'vp-khoa': 'Văn phòng Khoa', 'hanh-chinh': 'Hành chính', 'phong-chuc-nang': 'Phòng chức năng', 'hieu-truong': 'Hiệu Trưởng', 'pho-hieu-truong': 'Phó Hiệu Trưởng' };
             
-            document.getElementById('room-type-info').innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${badgeMap[loc.type]}">${typeLabelMap[loc.type]}</span><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-slate-100">Khu ${loc.area} - Lầu ${loc.floor}</span>`;
+            const floorText = loc.floor === 'Trệt' ? 'Trệt' : 'Lầu ' + loc.floor;
+            document.getElementById('room-type-info').innerHTML = `<span class="px-3 py-1 rounded-full text-[10px] font-black uppercase ${badgeMap[loc.type]}">${typeLabelMap[loc.type]}</span><span class="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-slate-100">Khu ${loc.area} - ${floorText}</span>`;
 
             const card = document.getElementById('office-contact-card');
             if (loc.type !== 'phong-hoc') {
                 card.classList.remove('hidden');
                 safeSetText('head-name', loc.head || "Chưa cập nhật");
-                safeSetText('room-mission', loc.mission || "Hỗ trợ công tác quản lý và đào tạo.");
                 const dep = document.getElementById('deputy-container');
                 if (loc.deputy) { dep.classList.remove('hidden'); safeSetText('deputy-name', loc.deputy); } else { dep.classList.add('hidden'); }
             } else { card.classList.add('hidden'); }
@@ -663,7 +659,7 @@
             const data = {
                 name: document.getElementById('form-name').value, area: document.getElementById('form-area').value, floor: document.getElementById('form-floor').value, type: document.getElementById('form-type').value,
                 coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
-                head: document.getElementById('form-head').value, deputy: document.getElementById('form-deputy').value, mission: document.getElementById('form-mission').value, note: document.getElementById('form-note').value,
+                head: document.getElementById('form-head').value, deputy: document.getElementById('form-deputy').value, note: document.getElementById('form-note').value,
                 images: document.getElementById('form-images').value.split(',').map(s => s.trim()).filter(s => s), updatedAt: Date.now()
             };
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
@@ -673,7 +669,7 @@
         resetForm: () => { document.getElementById('location-form').reset(); document.getElementById('form-id').value = ''; },
         edit: (id) => {
             const loc = locations.find(l => l.id === id); if (!loc) return;
-            const fields = ['id', 'name', 'area', 'floor', 'type', 'head', 'deputy', 'mission', 'note'];
+            const fields = ['id', 'name', 'area', 'floor', 'type', 'head', 'deputy', 'note'];
             fields.forEach(f => document.getElementById(`form-${f}`).value = loc[f] || '');
             document.getElementById('form-lat').value = loc.coords[0];
             document.getElementById('form-lng').value = loc.coords[1];
