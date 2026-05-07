@@ -20,7 +20,7 @@
         
         .app-wrapper { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
 
-        /* Sidebar Transition & Full Hide Logic */
+        /* Sidebar Transition & Absolute Hide Logic */
         .sidebar-transition { 
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 3000;
@@ -28,7 +28,9 @@
             background: white;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 40px rgba(0,0,0,0.15);
+            box-shadow: 0 0 40px rgba(0,0,0,0.2);
+            border: none;
+            outline: none;
         }
 
         /* Mobile Style */
@@ -44,7 +46,7 @@
             }
         }
 
-        /* Desktop Style */
+        /* Desktop Style - Fix 100% hide */
         @media (min-width: 1024px) {
             #main-sidebar { 
                 top: 0; left: 0; bottom: 0;
@@ -53,7 +55,7 @@
                 height: 100%;
             }
             #main-sidebar.sidebar-hidden { 
-                transform: translateX(-100%) !important; 
+                transform: translateX(-105%) !important; /* Đẩy hẳn ra ngoài lề màn hình */
             }
         }
 
@@ -146,7 +148,7 @@
     <!-- SIDEBAR -->
     <aside id="main-sidebar" class="sidebar-transition sidebar-hidden">
         
-        <!-- Drag/Close Handle for Mobile -->
+        <!-- Handle for Mobile -->
         <div class="lg:hidden w-full flex justify-center py-4 cursor-pointer" onclick="ui.toggleSidebar()">
             <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
         </div>
@@ -198,11 +200,12 @@
                     </div>
                 </div>
 
+                <!-- NAVIGATION PANEL -->
                 <div id="navigation-panel" class="hidden space-y-5">
                     <div id="distance-card" class="bg-blue-600 p-6 rounded-[2rem] text-white flex justify-between items-center shadow-xl shadow-blue-100 border border-white/10">
                         <div>
                             <p class="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-wider">Trạng thái lộ trình</p>
-                            <p id="distance-val" class="text-xl font-black uppercase">Đang dẫn đường...</p>
+                            <p id="distance-val" class="text-xl font-black uppercase">Đang bám dính...</p>
                         </div>
                         <div class="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-sm">
                             <i class="fas fa-route text-2xl"></i>
@@ -451,40 +454,35 @@
             document.getElementById('navigation-panel').classList.remove('hidden');
             document.getElementById('tts-btn').classList.remove('hidden');
             
-            const steps = document.getElementById('step-list'); 
-            steps.innerHTML = ""; 
-
-            const gallery = document.getElementById('image-gallery'); 
-            gallery.innerHTML = "";
-            const imageList = (loc.images || []).filter(u => u.trim() !== "");
-            imageList.forEach(url => {
-                const img = document.createElement('img'); 
-                img.src = getDirectImageUrl(url);
-                img.loading = "lazy"; 
-                img.onerror = () => img.src = "https://via.placeholder.com/400x220?text=Lỗi+tải+ảnh";
+            const steps = document.getElementById('step-list'); steps.innerHTML = ""; 
+            const gallery = document.getElementById('image-gallery'); gallery.innerHTML = "";
+            (loc.images || []).filter(u => u.trim() !== "").forEach(url => {
+                const img = document.createElement('img'); img.src = getDirectImageUrl(url);
+                img.loading = "lazy"; img.onerror = () => img.src = "https://via.placeholder.com/400x220?text=Lỗi+tải+ảnh";
                 gallery.appendChild(img);
             });
-            document.getElementById('image-gallery-container').classList.toggle('hidden', imageList.length === 0);
+            document.getElementById('image-gallery-container').classList.toggle('hidden', gallery.children.length === 0);
             
             graphLayerGroup.clearLayers();
             if (routingControl) map.removeControl(routingControl);
 
-            // LOGIC DẪN ĐƯỜNG KẾT HỢP (GPS NGOÀI -> CỔNG -> INDOOR)
             if (loc.graph && loc.graph.nodes && loc.graph.edges) {
                 const currentPos = userLocation || schoolGate;
                 let startNodeId = null, targetNodeId = null, minStartDist = Infinity, minEndDist = Infinity;
                 
-                // Tìm node gần nhất với người dùng và node gần nhất với đích
+                // SNAP LOGIC CẬP NHẬT: Quét toàn bộ Graph để tìm node gần GPS nhất (không phân biệt phòng)
                 Object.entries(loc.graph.nodes).forEach(([id, nodeData]) => {
-                    const dStart = logic.getDist(currentPos, [nodeData.lat, nodeData.lng]);
+                    const nodeCoords = [nodeData.lat, nodeData.lng];
+                    const dStart = logic.getDist(currentPos, nodeCoords);
                     if (dStart < minStartDist) { minStartDist = dStart; startNodeId = id; }
-                    const dEnd = logic.getDist(loc.coords, [nodeData.lat, nodeData.lng]);
-                    if (dEnd < minEndDist) { minEndDist = dEnd; targetNodeId = id; }
+                    
+                    const dEnd = logic.getDist(loc.coords, nodeCoords);
+                    if (dEnd < minEndDist) { minEndDist = de; targetNodeId = id; }
                 });
 
-                // TRƯỜNG HỢP 1: NGƯỜI DÙNG Ở NGOÀI TRƯỜNG (Cách xa các điểm nội bộ > 45m)
-                if (userLocation && minStartDist > 45) {
-                    document.getElementById('distance-val').innerText = "Đi tới cổng trường";
+                // TRƯỜNG HỢP 1: Ở QUÁ XA CÔNG VIÊN (NGOÀI TRƯỜNG)
+                if (userLocation && minStartDist > 100) {
+                    document.getElementById('distance-val').innerText = "Vào cổng trường";
                     document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
                     
                     routingControl = L.Routing.control({
@@ -495,14 +493,13 @@
 
                     routingControl.on('routesfound', (e) => {
                         const route = e.routes[0];
-                        document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} M tới cổng`;
+                        document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)}M tới cổng`;
                         route.instructions.forEach(ins => {
                             const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
                             d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-xs font-bold text-slate-600">${ins.text}</p>`;
                             steps.appendChild(d);
                         });
                         
-                        // Sau khi tới cổng, vẽ tiếp đường vào trong từ node cổng trường
                         let gateStartNode = null, minGateDist = Infinity;
                         Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
                             const d = logic.getDist(schoolGate, [nd.lat, nd.lng]);
@@ -511,24 +508,21 @@
                         if (gateStartNode) logic.drawIndoorPath(loc.graph, gateStartNode, targetNodeId, loc);
                     });
                 } else {
-                    // TRƯỜNG HỢP 2: NGƯỜI DÙNG Ở TRONG KHUÔN VIÊN
+                    // TRƯỜNG HỢP 2: SNAP NODE GẦN NHẤT (Bất kể ở khu vực nào trong trường)
                     document.getElementById('distance-val').innerText = "Dẫn đường nội khu";
                     document.getElementById('distance-card').classList.replace('bg-blue-600', 'bg-amber-600');
                     
-                    // SNAP: Vẽ đường từ GPS hiện tại tới node gần nhất (màu xanh)
                     if (startNodeId) {
                         const nodeCoords = [loc.graph.nodes[startNodeId].lat, loc.graph.nodes[startNodeId].lng];
-                        L.polyline([currentPos, nodeCoords], { color: '#3b82f6', weight: 4, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
+                        L.polyline([currentPos, nodeCoords], { color: '#3b82f6', weight: 5, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
                         
-                        // Chỉ hiển thị hướng dẫn snap nếu khoảng cách đáng kể (> 2m) và có GPS
-                        if (userLocation && minStartDist > 2) {
+                        if (userLocation && minStartDist > 3) {
                             const snapStep = document.createElement('div');
                             snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-2xl border border-blue-200 shadow-sm";
-                            snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Di chuyển đến hành lang gần nhất (${Math.round(minStartDist)}m)</p>`;
+                            snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Bắt đầu từ hành lang gần nhất (${Math.round(minStartDist)}m)</p>`;
                             steps.appendChild(snapStep);
                         }
                     }
-                    // Vẽ phần còn lại chạy trong hành lang (màu vàng)
                     logic.drawIndoorPath(loc.graph, startNodeId, targetNodeId, loc);
                 }
 
@@ -541,20 +535,10 @@
                 document.getElementById('instruction-card').classList.toggle('hidden', steps.children.length === 0);
                 map.flyTo(loc.coords, 21);
             } else {
-                // CHẾ ĐỘ GPS CÔNG CỘNG (Nếu địa điểm không có sơ đồ node)
+                // CHẾ ĐỘ GPS CÔNG CỘNG
                 document.getElementById('instruction-card').classList.remove('hidden');
                 document.getElementById('distance-val').innerText = "Tính toán GPS...";
                 document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
-                
-                if (loc.note) {
-                    loc.note.split('\n').filter(s => s.trim()).forEach(s => {
-                        const d = document.createElement('div'); 
-                        d.className = "flex gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-2";
-                        d.innerHTML = `<i class="fas fa-info-circle text-slate-400"></i><p class="instr-text text-xs font-bold text-slate-700">${s}</p>`;
-                        steps.appendChild(d);
-                    });
-                }
-
                 const start = userLocation || schoolGate;
                 routingControl = L.Routing.control({
                     waypoints: [L.latLng(start[0], start[1]), L.latLng(loc.coords[0], loc.coords[1])],
@@ -566,7 +550,7 @@
                     document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} MÉT`;
                     route.instructions.forEach(ins => {
                         const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
-                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-xs font-bold text-slate-600">${ins.text}</p>`;
+                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-[11px] font-bold text-slate-600">${ins.text}</p>`;
                         steps.appendChild(d);
                     });
                 });
@@ -584,7 +568,8 @@
                     const n = graph.nodes[id];
                     L.circleMarker([n.lat, n.lng], { radius: 3, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 1.5 }).addTo(graphLayerGroup);
                 });
-                lastHallwayCoords = [graph.nodes[pathIds[pathIds.length - 1]].lat, graph.nodes[pathIds[pathIds.length - 1]].lng];
+                const lastNode = graph.nodes[pathIds[pathIds.length - 1]];
+                lastHallwayCoords = [lastNode.lat, lastNode.lng];
             } else if (graph.nodes[startNodeId]) {
                 lastHallwayCoords = [graph.nodes[startNodeId].lat, graph.nodes[startNodeId].lng];
             }
@@ -631,7 +616,7 @@
                 images: document.getElementById('form-images-links').value.split('\n').filter(s => s.trim()), updatedAt: Date.now()
             };
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
-            logic.resetForm(); ui.showMessage("Đã lưu!");
+            logic.resetForm(); ui.showMessage("Đã lưu dữ liệu!");
         },
         renderAdminList: () => {
             const container = document.getElementById('admin-list');
