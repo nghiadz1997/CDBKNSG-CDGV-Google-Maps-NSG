@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NSG Navigator Pro - Internal Routing System</title>
+    <title>NSG Navigator Pro - Hybrid Routing</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -15,257 +15,143 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; overflow: hidden; margin: 0; padding: 0; }
-        
         #map { height: 100vh; width: 100vw; background: #e5e7eb; }
-        
         .app-wrapper { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
 
-        /* Sidebar Transition & Full Hide Logic */
-        .sidebar-transition { 
-            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
-            z-index: 3000;
-            position: fixed;
-            background: white;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 0 40px rgba(0,0,0,0.15);
-        }
-
-        /* Mobile Style */
+        /* Sidebar & UI */
+        .sidebar-transition { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); z-index: 3000; position: fixed; background: white; display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
         @media (max-width: 1023px) {
-            #main-sidebar { 
-                bottom: 0; left: 0; right: 0; 
-                height: 80vh; width: 100%; 
-                transform: translateY(0);
-                border-radius: 2.5rem 2.5rem 0 0;
-            }
-            #main-sidebar.sidebar-hidden { 
-                transform: translateY(100%) !important; 
-            }
+            #main-sidebar { bottom: 0; left: 0; right: 0; height: 80vh; width: 100%; transform: translateY(0); border-radius: 2.5rem 2.5rem 0 0; }
+            #main-sidebar.sidebar-hidden { transform: translateY(100%) !important; }
         }
-
-        /* Desktop Style */
         @media (min-width: 1024px) {
-            #main-sidebar { 
-                top: 0; left: 0; bottom: 0;
-                width: 420px; 
-                transform: translateX(0); 
-                height: 100%;
-            }
-            #main-sidebar.sidebar-hidden { 
-                transform: translateX(-100%) !important; 
-            }
+            #main-sidebar { top: 0; left: 0; bottom: 0; width: 420px; transform: translateX(0); height: 100%; }
+            #main-sidebar.sidebar-hidden { transform: translateX(-100%) !important; }
         }
 
         .leaflet-routing-container { display: none !important; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-
-        .btn-primary { background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%); transition: all 0.3s; }
-        .btn-primary:active { transform: scale(0.96); }
-
-        /* Animations */
-        .internal-path { 
-            stroke-dasharray: 12, 18; 
-            stroke-linecap: round; 
-            animation: dash-internal 1.5s linear infinite; 
-        }
-        @keyframes dash-internal { from { stroke-dashoffset: 30; } to { stroke-dashoffset: 0; } }
         
-        .snap-connection { 
-            stroke-dasharray: 5, 10; 
-            animation: dash-snap 2s linear infinite; 
-        }
-        @keyframes dash-snap { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+        /* Animations cho đường nội bộ */
+        .internal-path { stroke-dasharray: 10, 15; stroke-linecap: round; animation: dash-internal 1.2s linear infinite; }
+        @keyframes dash-internal { from { stroke-dashoffset: 25; } to { stroke-dashoffset: 0; } }
+        
+        .snap-connection { stroke-dasharray: 5, 8; animation: dash-snap 2s linear infinite; }
+        @keyframes dash-snap { from { stroke-dashoffset: 13; } to { stroke-dashoffset: 0; } }
 
-        .pulse-ring { width: 40px; height: 40px; background: rgba(26, 115, 232, 0.3); border-radius: 50%; position: absolute; top: -10px; left: -10px; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        .pulse-ring { width: 30px; height: 30px; background: rgba(26, 115, 232, 0.3); border-radius: 50%; position: absolute; top: -7px; left: -7px; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
         .blue-dot { width: 16px; height: 16px; background: #1a73e8; border: 3px solid white; border-radius: 50%; position: relative; z-index: 2; }
 
-        /* Floating UI */
-        #toggle-menu-btn { 
-            position: fixed; left: 1.25rem; top: 1.25rem; z-index: 2000;
-            background: white; width: 3.5rem; height: 3.5rem; border-radius: 1.25rem;
-            display: flex; align-items: center; justify-content: center; 
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            color: #1a73e8;
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-        #toggle-menu-btn:hover { background: #f8fafc; color: #1557b0; }
-        #toggle-menu-btn.active { transform: scale(0); opacity: 0; pointer-events: none; }
+        #toggle-menu-btn { position: fixed; left: 1.25rem; top: 1.25rem; z-index: 2000; background: white; width: 3.5rem; height: 3.5rem; border-radius: 1.25rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 25px rgba(0,0,0,0.15); color: #1a73e8; transition: all 0.4s; }
+        #toggle-menu-btn.active { transform: scale(0); opacity: 0; }
 
-        .map-overlay-tools {
-            position: fixed; top: 1.25rem; right: 1.25rem; z-index: 2000;
-            display: flex; flex-direction: column; gap: 0.75rem;
-        }
-        .map-tool-btn {
-            background: rgba(255, 255, 255, 0.95); backdrop-blur: 8px;
-            width: 3.25rem; height: 3.25rem; border-radius: 1.15rem;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-            color: #1a73e8; transition: all 0.2s;
-            border: 1px solid white;
-        }
-
-        .search-results { max-height: 45vh; overflow-y: auto; position: absolute; top: 110%; left: 0; right: 0; z-index: 4000; background: white; border-radius: 1.5rem; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2); border: 1px solid #e2e8f0; }
+        .search-results { max-height: 40vh; overflow-y: auto; position: absolute; top: 110%; left: 0; right: 0; z-index: 4000; background: white; border-radius: 1.5rem; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2); border: 1px solid #e2e8f0; }
         .search-item { padding: 1rem; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f1f5f9; }
-
-        .image-gallery { display: flex; gap: 10px; overflow-x: auto; padding: 4px; scroll-snap-type: x mandatory; }
-        .image-gallery img { flex: 0 0 85%; scroll-snap-align: center; height: 180px; object-fit: cover; border-radius: 1.25rem; background: #f8fafc; }
-
+        .image-gallery { display: flex; gap: 10px; overflow-x: auto; padding: 4px; }
+        .image-gallery img { flex: 0 0 85%; height: 160px; object-fit: cover; border-radius: 1.25rem; background: #f8fafc; }
+        
         .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #e2e8f0; transition: .4s; border-radius: 22px; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 22px; }
         .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #3b82f6; }
+        input:checked + .slider { background-color: #1a73e8; }
         input:checked + .slider:before { transform: translateX(22px); }
     </style>
 </head>
 <body class="antialiased text-slate-900">
 
 <div id="app" class="app-wrapper">
-    
-    <!-- MAP -->
     <div id="map"></div>
 
-    <!-- FLOATING UI -->
-    <button id="toggle-menu-btn" onclick="ui.toggleSidebar()" title="Mở Menu">
+    <button id="toggle-menu-btn" onclick="ui.toggleSidebar()">
         <i class="fas fa-bars text-xl"></i>
     </button>
 
-    <div class="map-overlay-tools">
-        <button onclick="ui.toggleLayer()" class="map-tool-btn">
-            <i id="layer-icon" class="fas fa-satellite text-lg"></i>
-        </button>
-        <button onclick="logic.recenterToUser(true)" class="map-tool-btn">
-            <i class="fas fa-location-arrow text-lg"></i>
-        </button>
+    <div class="fixed top-5 right-5 z-[2000] flex flex-col gap-3">
+        <button onclick="ui.toggleLayer()" class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-blue-600"><i id="layer-icon" class="fas fa-satellite"></i></button>
+        <button onclick="logic.recenterToUser(true)" class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-blue-600"><i class="fas fa-location-arrow"></i></button>
     </div>
 
-    <!-- SIDEBAR -->
     <aside id="main-sidebar" class="sidebar-transition sidebar-hidden">
-        
-        <!-- Drag/Close Handle for Mobile -->
-        <div class="lg:hidden w-full flex justify-center py-4 cursor-pointer" onclick="ui.toggleSidebar()">
-            <div class="w-12 h-1.5 bg-slate-200 rounded-full"></div>
-        </div>
+        <div class="lg:hidden w-full flex justify-center py-4" onclick="ui.toggleSidebar()"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
 
         <header class="px-6 py-5 bg-blue-700 text-white flex justify-between items-center shrink-0">
             <div onclick="logic.goHome()" class="cursor-pointer">
-                <h1 class="text-xl font-black tracking-tighter uppercase leading-none">Navigator PRO</h1>
-                <p class="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-1">Nam Sài Gòn Polytechnic</p>
+                <h1 class="text-xl font-black tracking-tight uppercase">Navigator PRO</h1>
+                <p class="text-[9px] font-bold opacity-70 tracking-widest">NAM SAI GON POLYTECHNIC</p>
             </div>
             <div class="flex gap-2">
-                <button id="tts-btn" onclick="logic.toggleVoice()" class="hidden w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all">
-                    <i id="voice-icon" class="fas fa-play text-xs"></i>
-                </button>
-                <button id="mute-btn" onclick="logic.toggleMute()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all">
-                    <i id="mute-icon" class="fas fa-volume-up text-xs"></i>
-                </button>
-                <button onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all">
-                    <i id="admin-icon" class="fas fa-user-shield text-xs"></i>
-                </button>
-                <button onclick="ui.toggleSidebar()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center transition-all">
-                    <i class="fas fa-times text-xs"></i>
-                </button>
+                <button onclick="ui.toggleAdminLogin()" class="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center"><i id="admin-icon" class="fas fa-user-shield text-xs"></i></button>
+                <button onclick="ui.toggleSidebar()" class="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center"><i class="fas fa-times text-xs"></i></button>
             </div>
         </header>
 
         <div class="flex-1 overflow-y-auto p-6 space-y-6">
-            <!-- USER VIEW -->
             <div id="user-view" class="space-y-6">
                 <div class="relative">
-                    <div class="relative group">
-                        <input type="text" id="search-input" 
-                            onfocus="logic.showSearch()" 
-                            oninput="logic.filterSearch(this.value)"
-                            class="w-full p-4 pl-12 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none bg-slate-50 font-bold transition-all text-sm" 
-                            placeholder="Tìm phòng học, văn phòng...">
-                        <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
-                    </div>
+                    <input type="text" id="search-input" onfocus="logic.showSearch()" oninput="logic.filterSearch(this.value)"
+                        class="w-full p-4 pl-12 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none bg-slate-50 font-bold transition-all text-sm" 
+                        placeholder="Tìm phòng học, văn phòng...">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
                     <div id="search-results" class="search-results hidden"></div>
                 </div>
 
                 <div id="welcome-panel" class="bg-blue-50/50 rounded-[2.5rem] p-8 border border-blue-100 text-center">
-                    <div class="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6 text-blue-600">
-                        <i class="fas fa-map-marked-alt text-3xl"></i>
-                    </div>
-                    <h2 class="text-lg font-extrabold text-blue-900 leading-tight">Chào mừng bạn đến với<br>NSG Polytechnic</h2>
-                    <div id="gps-status" class="mt-8 inline-flex items-center gap-2 px-5 py-2.5 bg-white rounded-full text-[10px] font-black text-blue-600 uppercase border border-blue-100 shadow-sm">
+                    <div class="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-4 text-blue-600"><i class="fas fa-map-marked-alt text-2xl"></i></div>
+                    <h2 class="text-lg font-extrabold text-blue-900 leading-tight">NSG Polytechnic<br>Indoor Navigation</h2>
+                    <div id="gps-status" class="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-[10px] font-black text-blue-600 uppercase border border-blue-100">
                         <span class="relative flex h-2 w-2"><span class="animate-ping absolute h-full w-full rounded-full bg-blue-400 opacity-75"></span><span class="relative h-2 w-2 rounded-full bg-blue-500"></span></span>
-                        <span id="gps-text">Đang kết nối GPS...</span>
+                        <span id="gps-text">Đang lấy GPS...</span>
                     </div>
                 </div>
 
-                <div id="navigation-panel" class="hidden space-y-5">
-                    <div id="distance-card" class="bg-blue-600 p-6 rounded-[2rem] text-white flex justify-between items-center shadow-xl shadow-blue-100 border border-white/10">
+                <div id="navigation-panel" class="hidden space-y-4">
+                    <div id="distance-card" class="bg-blue-600 p-5 rounded-[1.5rem] text-white flex justify-between items-center shadow-xl">
                         <div>
-                            <p class="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-wider">Trạng thái lộ trình</p>
-                            <p id="distance-val" class="text-xl font-black uppercase">Đang dẫn đường...</p>
+                            <p id="route-type-label" class="text-[9px] font-bold uppercase opacity-70 mb-1">Chế độ dẫn đường</p>
+                            <p id="distance-val" class="text-lg font-black uppercase">Đang tính...</p>
                         </div>
-                        <div class="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                            <i class="fas fa-route text-2xl"></i>
-                        </div>
+                        <i id="route-icon" class="fas fa-route text-2xl opacity-50"></i>
                     </div>
 
-                    <div id="image-gallery-container" class="hidden space-y-3">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Hình ảnh thực tế</p>
+                    <div id="image-gallery-container" class="hidden space-y-2">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Hình ảnh điểm đến</p>
                         <div id="image-gallery" class="image-gallery"></div>
                     </div>
 
-                    <div id="instruction-card" class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-                        <h3 class="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-5 border-b pb-3">Chỉ dẫn di chuyển</h3>
-                        <div id="step-list" class="space-y-4"></div>
+                    <div id="instruction-card" class="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                        <h3 class="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">Hướng dẫn di chuyển</h3>
+                        <div id="step-list" class="space-y-3"></div>
                     </div>
                 </div>
             </div>
 
-            <!-- ADMIN PANEL -->
-            <div id="admin-panel" class="hidden space-y-6">
+            <!-- Admin (Simplified) -->
+            <div id="admin-panel" class="hidden space-y-4">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-sm font-black text-blue-600 uppercase tracking-tight">Quản trị dữ liệu</h2>
-                    <button onclick="ui.logout()" class="text-[10px] font-bold text-red-500 uppercase px-3 py-1.5 bg-red-50 rounded-xl">Đăng xuất</button>
+                    <h2 class="text-xs font-black text-blue-600 uppercase">Quản lý Nodes</h2>
+                    <button onclick="ui.logout()" class="text-[9px] font-bold text-red-500 uppercase bg-red-50 px-2 py-1 rounded-lg">Đăng xuất</button>
                 </div>
-                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-4">
+                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-3">
                     <input type="hidden" id="form-id">
-                    <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                        <span class="text-xs font-bold uppercase text-slate-500">Trạng thái</span>
-                        <div class="flex items-center gap-2">
-                            <span id="status-label" class="text-[10px] font-black uppercase text-blue-600">Công khai</span>
-                            <label class="switch">
-                                <input type="checkbox" id="form-hidden" onchange="ui.updateStatusLabel(this.checked)">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
+                    <input type="text" id="form-name" required class="w-full p-3 border rounded-xl bg-slate-50 font-bold text-sm" placeholder="Tên phòng">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" step="any" id="form-lat" required class="p-3 border rounded-xl bg-amber-50 font-mono text-[10px]" placeholder="Lat">
+                        <input type="number" step="any" id="form-lng" required class="p-3 border rounded-xl bg-amber-50 font-mono text-[10px]" placeholder="Lng">
                     </div>
-                    <input type="text" id="form-name" required class="w-full p-4 border rounded-2xl bg-slate-50 outline-none focus:border-blue-500 font-bold text-sm" placeholder="Tên phòng (VD: Phòng A101)">
-                    <div class="grid grid-cols-2 gap-3">
-                        <select id="form-area" class="p-4 border rounded-2xl bg-slate-50 font-bold text-xs"><option value="A">Khu A</option><option value="B">Khu B</option><option value="C">Khu C</option></select>
-                        <select id="form-floor" class="p-4 border rounded-2xl bg-slate-50 font-bold text-xs"><option value="Trệt">Trệt</option><option value="1">Lầu 1</option><option value="2">Lầu 2</option><option value="3">Lầu 3</option></select>
-                        <input type="number" step="any" id="form-lat" required class="p-4 border rounded-2xl bg-amber-50 font-mono text-[11px]" placeholder="Vĩ độ">
-                        <input type="number" step="any" id="form-lng" required class="p-4 border rounded-2xl bg-amber-50 font-mono text-[11px]" placeholder="Kinh độ">
-                    </div>
-                    <textarea id="form-note" class="w-full p-4 border rounded-2xl bg-slate-50 h-24 outline-none text-xs" placeholder="Ghi chú hướng dẫn đặc biệt..."></textarea>
-                    <textarea id="form-graph-json" class="w-full p-4 border rounded-2xl bg-slate-900 text-amber-400 font-mono text-[10px] h-32 outline-none" placeholder='Sơ đồ Node JSON'></textarea>
-                    <textarea id="form-images-links" class="w-full p-4 border rounded-2xl bg-slate-50 h-20 text-[10px]" placeholder="Link ảnh Google Drive..."></textarea>
-                    <button type="submit" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl uppercase tracking-widest text-sm">Cập nhật dữ liệu</button>
-                    <button type="button" onclick="logic.resetForm()" class="w-full text-slate-400 text-xs font-bold uppercase">Nhập mới hoàn toàn</button>
+                    <textarea id="form-graph-json" class="w-full p-3 border rounded-xl bg-slate-900 text-green-400 font-mono text-[9px] h-32" placeholder="Graph JSON {nodes:{}, edges:{}}"></textarea>
+                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase text-xs shadow-lg">Lưu dữ liệu</button>
                 </form>
                 <div id="admin-list" class="space-y-2"></div>
             </div>
         </div>
     </aside>
 
-    <!-- LOGIN MODAL -->
     <div id="login-modal" class="fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 hidden">
-        <div class="bg-white w-full max-w-xs rounded-[3rem] p-10 shadow-2xl border border-slate-100">
-            <h2 class="text-2xl font-black text-center mb-8 tracking-tight">Admin Access</h2>
-            <div class="space-y-4">
-                <input type="password" id="admin-pass" class="w-full p-5 border rounded-2xl text-center font-extrabold outline-none bg-slate-50 focus:bg-white focus:border-blue-500 transition-all" placeholder="••••••">
-                <button onclick="ui.login()" class="w-full btn-primary text-white font-black py-4 rounded-2xl uppercase tracking-widest text-sm shadow-lg">Xác thực</button>
-                <button onclick="ui.toggleAdminLogin()" class="w-full text-slate-400 text-xs font-bold uppercase tracking-tighter">Hủy bỏ</button>
-            </div>
+        <div class="bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl">
+            <h2 class="text-xl font-black text-center mb-6">Admin Login</h2>
+            <input type="password" id="admin-pass" class="w-full p-4 border rounded-xl text-center mb-4" placeholder="••••••">
+            <button onclick="ui.login()" class="w-full bg-blue-600 text-white font-black py-3 rounded-xl uppercase text-xs">Xác thực</button>
         </div>
     </div>
 </div>
@@ -282,29 +168,19 @@
     const appId = 'nsg-navigator-v6';
 
     let map, routingControl, googleSatellite, googleRoadmap;
-    let isAdmin = false, isMuted = false, locations = [], userLocation = null, userMarker = null;
+    let isAdmin = false, locations = [], userLocation = null, userMarker = null;
     let graphLayerGroup = L.layerGroup();
     let currentSelectedLocation = null;
+    
+    // Tọa độ cổng trường mặc định
     const schoolGate = [10.735473, 106.680579];
-
-    const getDirectImageUrl = (url) => {
-        if (!url) return "";
-        const driveRegex = /id=([^&]+)|d\/([^/]+)/;
-        const match = url.match(driveRegex);
-        if (match) {
-            const id = match[1] || match[2];
-            return `https://drive.google.com/thumbnail?id=${id}&sz=w1000`;
-        }
-        return url;
-    };
 
     window.ui = {
         toggleSidebar: () => {
             const sb = document.getElementById('main-sidebar');
             const toggleBtn = document.getElementById('toggle-menu-btn');
             const isHidden = sb.classList.toggle('sidebar-hidden');
-            if (isHidden) toggleBtn.classList.remove('active');
-            else toggleBtn.classList.add('active');
+            toggleBtn.classList.toggle('active', !isHidden);
             setTimeout(() => { map.invalidateSize(); }, 500);
         },
         toggleLayer: () => {
@@ -313,36 +189,25 @@
             (isSat ? googleRoadmap : googleSatellite).addTo(map);
             document.getElementById('layer-icon').className = isSat ? "fas fa-map" : "fas fa-satellite";
         },
-        toggleAdminLogin: () => {
-            if (isAdmin) ui.logout();
-            else document.getElementById('login-modal').classList.toggle('hidden');
-        },
+        toggleAdminLogin: () => document.getElementById('login-modal').classList.toggle('hidden'),
         login: () => {
             if (document.getElementById('admin-pass').value === 'Nsg@2026') {
                 isAdmin = true;
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 document.getElementById('user-view').classList.add('hidden');
-                document.getElementById('admin-icon').className = "fas fa-sign-out-alt";
-                logic.renderAdminList();
-            } else ui.showMessage("Mật khẩu sai!");
+            }
         },
         logout: () => {
             isAdmin = false;
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('user-view').classList.remove('hidden');
-            document.getElementById('admin-icon').className = "fas fa-user-shield";
-        },
-        updateStatusLabel: (checked) => {
-            const lbl = document.getElementById('status-label');
-            lbl.innerText = checked ? 'Đang ẩn' : 'Công khai';
-            lbl.className = checked ? 'text-[10px] font-black uppercase text-red-500' : 'text-[10px] font-black uppercase text-blue-600';
         },
         showMessage: (msg) => {
             const t = document.createElement('div');
-            t.className = "fixed top-24 left-1/2 -translate-x-1/2 z-[20000] bg-slate-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full font-extrabold shadow-2xl text-xs uppercase tracking-tight border border-white/10";
+            t.className = "fixed bottom-10 left-1/2 -translate-x-1/2 z-[5000] bg-black/80 text-white px-6 py-3 rounded-full text-xs font-bold";
             t.innerText = msg; document.body.appendChild(t);
-            setTimeout(() => t.remove(), 3000);
+            setTimeout(() => t.remove(), 2500);
         }
     };
 
@@ -350,11 +215,16 @@
         init: async () => {
             googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22 });
             googleRoadmap = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22 });
-            map = L.map('map', { zoomControl: false, attributionControl: false, tap: false }).setView(schoolGate, 19);
+            
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView(schoolGate, 19);
             googleSatellite.addTo(map);
             graphLayerGroup.addTo(map);
-            L.marker(schoolGate, { icon: L.divIcon({ className: '', html: `<div class="bg-red-600 w-7 h-7 rounded-full border-2 border-white flex items-center justify-center shadow-lg"><i class="fas fa-door-open text-white text-[10px]"></i></div>`, iconAnchor: [14,14] }) }).addTo(map);
-            
+
+            // Cổng trường marker
+            L.marker(schoolGate, { 
+                icon: L.divIcon({ className: '', html: `<div class="bg-red-600 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-lg"><i class="fas fa-door-open text-white text-[10px]"></i></div>`, iconAnchor: [12,12] }) 
+            }).addTo(map);
+
             map.on('click', (e) => {
                 if (isAdmin) {
                     document.getElementById('form-lat').value = e.latlng.lat.toFixed(7);
@@ -366,6 +236,7 @@
             logic.listenToFirestore();
             logic.startGPS();
         },
+
         startGPS: () => {
             if ("geolocation" in navigator) {
                 navigator.geolocation.watchPosition((p) => {
@@ -376,47 +247,50 @@
                 }, null, { enableHighAccuracy: true });
             }
         },
+
         updateUserMarker: () => {
             if (!userLocation) return;
             if (userMarker) userMarker.setLatLng(userLocation);
-            else userMarker = L.marker(userLocation, { icon: L.divIcon({ className: '', html: `<div class="relative"><div class="pulse-ring"></div><div class="blue-dot"></div></div>`, iconSize:[20,20], iconAnchor:[10,10] }) }).addTo(map);
+            else userMarker = L.marker(userLocation, { 
+                icon: L.divIcon({ className: '', html: `<div class="relative"><div class="pulse-ring"></div><div class="blue-dot"></div></div>`, iconSize:[20,20], iconAnchor:[10,10] }) 
+            }).addTo(map);
         },
+
         recenterToUser: (zoom) => {
             if (userLocation) map.flyTo(userLocation, zoom ? 21 : 19);
             else ui.showMessage("Chờ tín hiệu GPS...");
         },
+
         listenToFirestore: () => {
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'locations'), (snap) => {
                 locations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 if (isAdmin) logic.renderAdminList();
             });
         },
+
         showSearch: () => {
             document.getElementById('search-results').classList.remove('hidden');
             logic.filterSearch(document.getElementById('search-input').value);
         },
+
         filterSearch: (q) => {
             const container = document.getElementById('search-results');
             container.innerHTML = "";
-            const filtered = locations.filter(l => l.name.toLowerCase().includes(q.toLowerCase()) && !l.isHidden);
-            if (filtered.length === 0) {
-                container.innerHTML = `<div class="p-4 text-center text-xs text-slate-400 italic">Không tìm thấy địa điểm</div>`;
-                return;
-            }
+            const filtered = locations.filter(l => l.name.toLowerCase().includes(q.toLowerCase()));
             filtered.forEach(l => {
                 const item = document.createElement('div');
                 item.className = "search-item";
-                item.innerHTML = `<div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-map-marker-alt"></i></div>
-                                  <div><p class="font-bold text-sm text-slate-700">${l.name}</p><p class="text-[9px] text-slate-400 uppercase">Khu ${l.area} • Tầng ${l.floor}</p></div>`;
+                item.innerHTML = `<i class="fas fa-map-marker-alt text-blue-500"></i><div><p class="font-bold text-sm">${l.name}</p><p class="text-[9px] text-slate-400">Khu ${l.area || '?'}</p></div>`;
                 item.onclick = () => {
                     document.getElementById('search-input').value = l.name;
                     container.classList.add('hidden');
                     logic.selectLocation(l);
-                    ui.toggleSidebar(); 
+                    ui.toggleSidebar();
                 };
                 container.appendChild(item);
             });
         },
+
         getDist: (p1, p2) => {
             const R = 6371e3;
             const φ1 = p1[0] * Math.PI/180, φ2 = p2[0] * Math.PI/180;
@@ -424,20 +298,27 @@
             const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         },
+
+        // Dijkstra algorithm for shortest path in graph
         findShortestPath: (graph, startNodeId, endNodeId) => {
-            const nodes = graph.nodes, edges = graph.edges, distances = {}, prev = {}, queue = new Set(Object.keys(nodes));
+            if (!graph || !graph.nodes || !graph.edges) return null;
+            const nodes = graph.nodes, edges = graph.edges;
+            const distances = {}, prev = {}, queue = new Set(Object.keys(nodes));
+            
             Object.keys(nodes).forEach(id => { distances[id] = Infinity; prev[id] = null; });
             distances[startNodeId] = 0;
+
             while (queue.size > 0) {
                 let u = null;
                 for (const nodeId of queue) { if (u === null || distances[nodeId] < distances[u]) u = nodeId; }
                 if (u === endNodeId || distances[u] === Infinity) break;
                 queue.delete(u);
-                (edges[u] || []).forEach(edgeObj => {
-                    const v = edgeObj.to;
+
+                (edges[u] || []).forEach(edge => {
+                    const v = edge.to;
                     if (!queue.has(v)) return;
-                    const uCoords = [nodes[u].lat, nodes[u].lng], vCoords = [nodes[v].lat, nodes[v].lng];
-                    const alt = distances[u] + logic.getDist(uCoords, vCoords);
+                    const d = logic.getDist([nodes[u].lat, nodes[u].lng], [nodes[v].lat, nodes[v].lng]);
+                    const alt = distances[u] + d;
                     if (alt < distances[v]) { distances[v] = alt; prev[v] = u; }
                 });
             }
@@ -445,232 +326,136 @@
             while (curr !== null) { path.unshift(curr); curr = prev[curr]; }
             return path.length > 1 && path[0] === startNodeId ? path : null;
         },
+
         selectLocation: (loc) => {
             currentSelectedLocation = loc;
             document.getElementById('welcome-panel').classList.add('hidden');
             document.getElementById('navigation-panel').classList.remove('hidden');
-            document.getElementById('tts-btn').classList.remove('hidden');
-            
-            const steps = document.getElementById('step-list'); 
-            steps.innerHTML = ""; 
-
-            const gallery = document.getElementById('image-gallery'); 
-            gallery.innerHTML = "";
-            const imageList = (loc.images || []).filter(u => u.trim() !== "");
-            imageList.forEach(url => {
-                const img = document.createElement('img'); 
-                img.src = getDirectImageUrl(url);
-                img.loading = "lazy"; 
-                img.onerror = () => img.src = "https://via.placeholder.com/400x220?text=Lỗi+tải+ảnh";
-                gallery.appendChild(img);
-            });
-            document.getElementById('image-gallery-container').classList.toggle('hidden', imageList.length === 0);
-            
+            const steps = document.getElementById('step-list'); steps.innerHTML = "";
             graphLayerGroup.clearLayers();
             if (routingControl) map.removeControl(routingControl);
 
-            // LOGIC DẪN ĐƯỜNG KẾT HỢP (GPS NGOÀI -> CỔNG -> INDOOR)
-            if (loc.graph && loc.graph.nodes && loc.graph.edges) {
-                const currentPos = userLocation || schoolGate;
-                let startNodeId = null, targetNodeId = null, minStartDist = Infinity, minEndDist = Infinity;
-                
-                // Tìm node gần nhất với người dùng và node gần nhất với đích
-                Object.entries(loc.graph.nodes).forEach(([id, nodeData]) => {
-                    const dStart = logic.getDist(currentPos, [nodeData.lat, nodeData.lng]);
-                    if (dStart < minStartDist) { minStartDist = dStart; startNodeId = id; }
-                    const dEnd = logic.getDist(loc.coords, [nodeData.lat, nodeData.lng]);
-                    if (dEnd < minEndDist) { minEndDist = dEnd; targetNodeId = id; }
+            const currentPos = userLocation || schoolGate;
+            
+            // Tìm Node gần nhất với vị trí hiện tại và Node gần nhất với đích
+            let startNodeId = null, targetNodeId = null, minS = Infinity, minE = Infinity;
+            if (loc.graph && loc.graph.nodes) {
+                Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
+                    const dS = logic.getDist(currentPos, [nd.lat, nd.lng]);
+                    if (dS < minS) { minS = dS; startNodeId = id; }
+                    const dE = logic.getDist(loc.coords, [nd.lat, nd.lng]);
+                    if (dE < minE) { minE = dE; targetNodeId = id; }
                 });
+            }
 
-                // TRƯỜNG HỢP 1: NGƯỜI DÙNG Ở NGOÀI TRƯỜNG (Cách xa các điểm nội bộ > 45m)
-                if (userLocation && minStartDist > 45) {
-                    document.getElementById('distance-val').innerText = "Đi tới cổng trường";
-                    document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
-                    
-                    routingControl = L.Routing.control({
-                        waypoints: [L.latLng(userLocation[0], userLocation[1]), L.latLng(schoolGate[0], schoolGate[1])],
-                        language: 'vi', lineOptions: { styles: [{ color: '#1a73e8', weight: 6, className: 'leaflet-ant-path' }] },
-                        createMarker: () => null, addWaypoints: false, show: false
-                    }).addTo(map);
-
-                    routingControl.on('routesfound', (e) => {
-                        const route = e.routes[0];
-                        document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} M tới cổng`;
-                        route.instructions.forEach(ins => {
-                            const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
-                            d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-xs font-bold text-slate-600">${ins.text}</p>`;
-                            steps.appendChild(d);
-                        });
-                        
-                        // Sau khi tới cổng, vẽ tiếp đường vào trong từ node cổng trường
-                        let gateStartNode = null, minGateDist = Infinity;
-                        Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
-                            const d = logic.getDist(schoolGate, [nd.lat, nd.lng]);
-                            if (d < minGateDist) { minGateDist = d; gateStartNode = id; }
-                        });
-                        if (gateStartNode) logic.drawIndoorPath(loc.graph, gateStartNode, targetNodeId, loc);
-                    });
-                } else {
-                    // TRƯỜNG HỢP 2: NGƯỜI DÙNG Ở TRONG KHUÔN VIÊN
-                    document.getElementById('distance-val').innerText = "Dẫn đường nội khu";
-                    document.getElementById('distance-card').classList.replace('bg-blue-600', 'bg-amber-600');
-                    
-                    // SNAP: Vẽ đường từ GPS hiện tại tới node gần nhất (màu xanh)
-                    if (startNodeId) {
-                        const nodeCoords = [loc.graph.nodes[startNodeId].lat, loc.graph.nodes[startNodeId].lng];
-                        L.polyline([currentPos, nodeCoords], { color: '#3b82f6', weight: 4, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
-                        
-                        // Chỉ hiển thị hướng dẫn snap nếu khoảng cách đáng kể (> 2m) và có GPS
-                        if (userLocation && minStartDist > 2) {
-                            const snapStep = document.createElement('div');
-                            snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-2xl border border-blue-200 shadow-sm";
-                            snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Di chuyển đến hành lang gần nhất (${Math.round(minStartDist)}m)</p>`;
-                            steps.appendChild(snapStep);
-                        }
-                    }
-                    // Vẽ phần còn lại chạy trong hành lang (màu vàng)
-                    logic.drawIndoorPath(loc.graph, startNodeId, targetNodeId, loc);
-                }
-
-                if (loc.note) loc.note.split('\n').filter(s => s.trim()).forEach(s => {
-                    const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200";
-                    d.innerHTML = `<i class="fas fa-info-circle text-slate-400"></i><p class="instr-text text-xs font-bold text-slate-700">${s}</p>`;
-                    steps.appendChild(d);
-                });
-
-                document.getElementById('instruction-card').classList.toggle('hidden', steps.children.length === 0);
-                map.flyTo(loc.coords, 21);
-            } else {
-                // CHẾ ĐỘ GPS CÔNG CỘNG (Nếu địa điểm không có sơ đồ node)
-                document.getElementById('instruction-card').classList.remove('hidden');
-                document.getElementById('distance-val').innerText = "Tính toán GPS...";
-                document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
+            // LOGIC HYBRID:
+            // Nếu khoảng cách đến Node gần nhất > 45m -> Đang ở ngoài đường
+            if (minS > 45 && userLocation) {
+                document.getElementById('route-type-label').innerText = "Dẫn đường ngoài trường";
+                document.getElementById('distance-card').className = "bg-blue-600 p-5 rounded-[1.5rem] text-white flex justify-between items-center shadow-xl";
                 
-                if (loc.note) {
-                    loc.note.split('\n').filter(s => s.trim()).forEach(s => {
-                        const d = document.createElement('div'); 
-                        d.className = "flex gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-2";
-                        d.innerHTML = `<i class="fas fa-info-circle text-slate-400"></i><p class="instr-text text-xs font-bold text-slate-700">${s}</p>`;
-                        steps.appendChild(d);
-                    });
-                }
-
-                const start = userLocation || schoolGate;
+                // 1. Dẫn từ GPS tới Cổng trường (Leaflet Routing)
                 routingControl = L.Routing.control({
-                    waypoints: [L.latLng(start[0], start[1]), L.latLng(loc.coords[0], loc.coords[1])],
-                    language: 'vi', lineOptions: { styles: [{ color: '#1a73e8', weight: 6, className: 'leaflet-ant-path' }] },
-                    createMarker: () => null, addWaypoints: false, show: false
+                    waypoints: [L.latLng(userLocation[0], userLocation[1]), L.latLng(schoolGate[0], schoolGate[1])],
+                    language: 'vi', createMarker: () => null, addWaypoints: false,
+                    lineOptions: { styles: [{ color: '#1a73e8', weight: 6 }] }
                 }).addTo(map);
+
                 routingControl.on('routesfound', (e) => {
                     const route = e.routes[0];
-                    document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} MÉT`;
+                    document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} M tới cổng`;
                     route.instructions.forEach(ins => {
-                        const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
-                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-xs font-bold text-slate-600">${ins.text}</p>`;
+                        const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border";
+                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="text-xs font-bold text-slate-600">${ins.text}</p>`;
                         steps.appendChild(d);
                     });
+                    
+                    // 2. Vẽ nối tiếp từ Node cổng trường vào trong Graph (Màu vàng)
+                    if (loc.graph) {
+                        let gateNodeId = null, minG = Infinity;
+                        Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
+                            const dG = logic.getDist(schoolGate, [nd.lat, nd.lng]);
+                            if (dG < minG) { minG = dG; gateNodeId = id; }
+                        });
+                        logic.drawIndoorPath(loc.graph, gateNodeId, targetNodeId, loc.coords);
+                    }
                 });
-                map.flyTo(loc.coords, 21);
-            }
-        },
+            } else {
+                // ĐANG Ở TRONG TRƯỜNG -> DÙNG HOÀN TOÀN GRAPH
+                document.getElementById('route-type-label').innerText = "Dẫn đường nội bộ (Indoor)";
+                document.getElementById('distance-card').className = "bg-amber-600 p-5 rounded-[1.5rem] text-white flex justify-between items-center shadow-xl";
+                
+                // Vẽ Snap-line từ GPS người dùng tới Node hành lang đầu tiên
+                if (startNodeId && loc.graph) {
+                    const firstNode = loc.graph.nodes[startNodeId];
+                    L.polyline([currentPos, [firstNode.lat, firstNode.lng]], { color: '#1a73e8', weight: 4, className: 'snap-connection' }).addTo(graphLayerGroup);
+                    
+                    const snapStep = document.createElement('div');
+                    snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-xl border border-blue-200";
+                    snapStep.innerHTML = `<i class="fas fa-walking text-blue-600"></i><p class="text-xs font-bold text-blue-800">Di chuyển vào lối đi hành lang gần nhất (${Math.round(minS)}m)</p>`;
+                    steps.appendChild(snapStep);
 
-        drawIndoorPath: (graph, startNodeId, targetNodeId, loc) => {
-            const pathIds = logic.findShortestPath(graph, startNodeId, targetNodeId);
-            let lastHallwayCoords = null;
-            if (pathIds) {
-                const pathCoords = pathIds.map(id => [graph.nodes[id].lat, graph.nodes[id].lng]);
-                L.polyline(pathCoords, { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 1 }).addTo(graphLayerGroup);
-                pathIds.forEach(id => {
-                    const n = graph.nodes[id];
-                    L.circleMarker([n.lat, n.lng], { radius: 3, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 1.5 }).addTo(graphLayerGroup);
-                });
-                lastHallwayCoords = [graph.nodes[pathIds[pathIds.length - 1]].lat, graph.nodes[pathIds[pathIds.length - 1]].lng];
-            } else if (graph.nodes[startNodeId]) {
-                lastHallwayCoords = [graph.nodes[startNodeId].lat, graph.nodes[startNodeId].lng];
-            }
-            if (lastHallwayCoords) {
-                L.polyline([lastHallwayCoords, loc.coords], { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 1 }).addTo(graphLayerGroup);
-            }
-        },
-
-        speak: (text) => {
-            if (!text || isMuted) return;
-            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-            const ut = new SpeechSynthesisUtterance(text);
-            const voices = window.speechSynthesis.getVoices();
-            ut.voice = voices.find(v => v.lang.includes('vi')) || voices[0];
-            ut.lang = 'vi-VN'; ut.rate = 1.1;
-            window.speechSynthesis.speak(ut);
-        },
-        toggleMute: () => {
-            isMuted = !isMuted;
-            document.getElementById('mute-icon').className = isMuted ? "fas fa-volume-mute text-red-400" : "fas fa-volume-up";
-            if (isMuted) window.speechSynthesis.cancel();
-        },
-        toggleVoice: (manualText = null) => {
-            if(isMuted) return;
-            let text = manualText || Array.from(document.querySelectorAll('#step-list .instr-text')).map(p => p.innerText).join('. ');
-            if (!text && currentSelectedLocation) text = `Đang dẫn đường đến ${currentSelectedLocation.name}`;
-            if (text) {
-                logic.speak(text);
-                const icon = document.getElementById('voice-icon');
-                if (icon) {
-                    icon.className = "fas fa-spinner fa-spin text-blue-400";
-                    setTimeout(() => { if (icon) icon.className = "fas fa-play"; }, 5000);
+                    // Thuật toán Dijkstra cho phần còn lại
+                    logic.drawIndoorPath(loc.graph, startNodeId, targetNodeId, loc.coords);
+                    document.getElementById('distance-val').innerText = "Đã tìm thấy lối đi";
                 }
             }
+
+            map.flyTo(loc.coords, 21);
         },
-        handleSaveLocation: async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('form-id').value || crypto.randomUUID();
-            let gData = null; try { const v = document.getElementById('form-graph-json').value.trim(); if(v) gData = JSON.parse(v); } catch(e) { ui.showMessage("Lỗi JSON!"); return; }
-            const data = {
-                name: document.getElementById('form-name').value, area: document.getElementById('form-area').value,
-                floor: document.getElementById('form-floor').value, coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
-                note: document.getElementById('form-note').value, graph: gData, isHidden: document.getElementById('form-hidden').checked,
-                images: document.getElementById('form-images-links').value.split('\n').filter(s => s.trim()), updatedAt: Date.now()
-            };
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
-            logic.resetForm(); ui.showMessage("Đã lưu!");
+
+        drawIndoorPath: (graph, startId, endId, finalCoords) => {
+            const pathIds = logic.findShortestPath(graph, startId, endId);
+            if (pathIds) {
+                const coords = pathIds.map(id => [graph.nodes[id].lat, graph.nodes[id].lng]);
+                
+                // Vẽ đường Graph màu vàng hổ phách
+                L.polyline(coords, { color: '#fbbf24', weight: 8, className: 'internal-path' }).addTo(graphLayerGroup);
+                
+                // Vẽ Snap-line từ Node cuối cùng tới chính xác điểm đích (Phòng học)
+                const lastNode = graph.nodes[pathIds[pathIds.length-1]];
+                L.polyline([[lastNode.lat, lastNode.lng], finalCoords], { color: '#fbbf24', weight: 8, className: 'internal-path' }).addTo(graphLayerGroup);
+                
+                // Đánh dấu các Node
+                pathIds.forEach(id => {
+                    const n = graph.nodes[id];
+                    L.circleMarker([n.lat, n.lng], { radius: 3, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 1 }).addTo(graphLayerGroup);
+                });
+            }
         },
-        renderAdminList: () => {
-            const container = document.getElementById('admin-list');
-            container.innerHTML = `<p class="text-[9px] font-black text-slate-400 uppercase mb-2">Danh sách (${locations.length})</p>`;
-            locations.sort((a,b) => a.name.localeCompare(b.name)).forEach(l => {
-                const d = document.createElement('div');
-                d.className = `flex justify-between items-center p-3 bg-white border rounded-xl shadow-sm ${l.isHidden ? 'opacity-50 border-red-100' : ''}`;
-                d.innerHTML = `<div><div class="flex items-center gap-1"><p class="text-xs font-bold">${l.name}</p>${l.isHidden ? '<i class="fas fa-eye-slash text-[9px] text-red-500"></i>' : ''}</div><p class="text-[8px] text-slate-400">Khu ${l.area} - Tầng ${l.floor}</p></div>
-                               <div class="flex gap-1"><button onclick="logic.edit('${l.id}')" class="text-blue-500 w-8 h-8 flex items-center justify-center bg-blue-50 rounded-lg"><i class="fas fa-edit text-[10px]"></i></button>
-                               <button onclick="logic.delete('${l.id}')" class="text-red-500 w-8 h-8 flex items-center justify-center bg-red-50 rounded-lg"><i class="fas fa-trash text-[10px]"></i></button></div>`;
-                container.appendChild(d);
-            });
-        },
-        edit: (id) => {
-            const l = locations.find(x => x.id === id); if (!l) return;
-            document.getElementById('form-id').value = l.id;
-            document.getElementById('form-name').value = l.name;
-            document.getElementById('form-area').value = l.area;
-            document.getElementById('form-floor').value = l.floor;
-            document.getElementById('form-lat').value = l.coords[0];
-            document.getElementById('form-lng').value = l.coords[1];
-            document.getElementById('form-note').value = l.note || "";
-            document.getElementById('form-graph-json').value = l.graph ? JSON.stringify(l.graph, null, 2) : "";
-            document.getElementById('form-images-links').value = (l.images || []).join('\n');
-            document.getElementById('form-hidden').checked = l.isHidden || false;
-            ui.updateStatusLabel(l.isHidden);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        },
-        delete: async (id) => { if (confirm("Xóa?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id)); },
-        resetForm: () => { document.getElementById('location-form').reset(); document.getElementById('form-id').value = ""; ui.updateStatusLabel(false); },
+
         goHome: () => {
             document.getElementById('navigation-panel').classList.add('hidden');
             document.getElementById('welcome-panel').classList.remove('hidden');
-            document.getElementById('tts-btn').classList.add('hidden');
             document.getElementById('search-input').value = "";
             graphLayerGroup.clearLayers();
             if (routingControl) map.removeControl(routingControl);
-            window.speechSynthesis.cancel();
             map.flyTo(schoolGate, 19);
+        },
+
+        renderAdminList: () => {
+            const container = document.getElementById('admin-list');
+            container.innerHTML = `<p class="text-[9px] font-black uppercase text-slate-400">Danh sách (${locations.length})</p>`;
+            locations.forEach(l => {
+                const d = document.createElement('div');
+                d.className = "p-2 bg-white border rounded-lg flex justify-between items-center text-xs";
+                d.innerHTML = `<span>${l.name}</span><button onclick="logic.delete('${l.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>`;
+                container.appendChild(d);
+            });
+        },
+        delete: async (id) => { if(confirm("Xóa?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id)); },
+        handleSaveLocation: async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('form-id').value || crypto.randomUUID();
+            let gData = null; try { gData = JSON.parse(document.getElementById('form-graph-json').value); } catch(e) {}
+            const data = {
+                name: document.getElementById('form-name').value,
+                coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
+                graph: gData, updatedAt: Date.now()
+            };
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
+            ui.showMessage("Đã lưu!");
+            document.getElementById('location-form').reset();
         }
     };
 
