@@ -28,7 +28,7 @@
             .map-container { height: 100vh; }
         }
 
-        .sidebar-transition { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), width 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar-transition { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease; }
 
         .leaflet-routing-container { display: none !important; }
         
@@ -157,9 +157,101 @@
         .toggle-sidebar-btn:hover { background: #f8fafc; padding-left: 5px; }
 
         .sidebar-hidden { transform: translateX(-100%); width: 0 !important; overflow: hidden; }
-        .sidebar-hidden + main .toggle-sidebar-btn i { transform: rotate(180deg); }
 
         .admin-sub-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0.5rem 0.5rem 0.25rem 0.5rem; }
+
+        /* =========================
+           MOBILE FULL MAP MODE
+        ========================= */
+        @media (max-width: 1023px) {
+            #main-sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 85vh; /* Giảm nhẹ độ cao để thấy bản đồ phía trên */
+                z-index: 4000;
+                border-radius: 2.5rem 2.5rem 0 0;
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+                box-shadow: 0 -15px 50px rgba(0,0,0,0.3);
+                background: white;
+                margin-top: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .sidebar-hidden {
+                transform: translateY(100%) !important;
+                opacity: 0 !important;
+                pointer-events: none;
+            }
+
+            main.map-container {
+                width: 100% !important;
+                height: 100vh !important;
+                position: fixed;
+                inset: 0;
+                z-index: 1;
+            }
+
+            #map {
+                height: 100vh !important;
+                width: 100vw !important;
+            }
+
+            .toggle-sidebar-btn {
+                top: auto;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 60px;
+                height: 60px;
+                border-radius: 999px;
+                background: white;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 3000;
+                border: 3px solid #1a73e8;
+            }
+
+            /* Loại bỏ hiệu ứng xoay icon trên di động theo yêu cầu */
+            .toggle-sidebar-btn i {
+                font-size: 22px;
+                transform: none !important;
+            }
+            
+            .mobile-only { display: block; }
+            .desktop-only { display: none; }
+        }
+
+        @media (min-width: 1024px) {
+            .mobile-only { display: none; }
+            .desktop-only { display: block; }
+            .sidebar-hidden + main .toggle-sidebar-btn i { transform: rotate(180deg); }
+        }
+
+        /* Styling cho thanh ngang kéo xuống (Drag Handle) */
+        .drag-handle-container {
+            width: 100%;
+            padding: 14px 0 10px;
+            cursor: ns-resize;
+            touch-action: none;
+            background: white;
+            border-radius: 2.5rem 2.5rem 0 0;
+        }
+
+        .drag-handle {
+            width: 50px;
+            height: 5px;
+            background: #cbd5e1;
+            border-radius: 10px;
+            margin: 0 auto;
+            transition: background 0.2s;
+        }
+        
+        .drag-handle-container:active .drag-handle {
+            background: #94a3b8;
+        }
     </style>
 </head>
 <body class="overflow-x-hidden antialiased text-slate-900">
@@ -168,14 +260,26 @@
     
     <!-- SIDEBAR -->
     <aside id="main-sidebar" class="w-full lg:w-[420px] xl:w-[480px] flex flex-col z-20 shadow-2xl bg-white lg:h-screen sidebar-transition order-2 lg:order-1 border-t lg:border-t-0 lg:border-r border-slate-200 rounded-t-[2.5rem] lg:rounded-t-none -mt-10 lg:mt-0">
-        <header class="p-5 lg:p-6 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg">
+        
+        <!-- Drag handle thanh ngang hiện đại cho mobile -->
+        <div id="mobile-drag-area" class="mobile-only drag-handle-container">
+            <div class="drag-handle"></div>
+        </div>
+
+        <header id="sidebar-header" class="p-5 lg:p-6 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg relative">
             <div onclick="logic.goHome()" class="cursor-pointer group">
                 <h1 class="text-xl font-extrabold tracking-tighter leading-none uppercase group-hover:text-blue-200 transition-colors">Navigator PRO</h1>
                 <p class="text-[10px] opacity-70 uppercase tracking-[0.2em] font-bold mt-1 group-hover:opacity-100">CĐBK Nam Sài Gòn <i class="fas fa-home ml-1 text-[8px]"></i></p>
             </div>
-            <button onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
-                <i id="admin-icon" class="fas fa-user-shield"></i>
-            </button>
+            <div class="flex gap-2">
+                <!-- Nút ẩn menu cho di động -->
+                <button onclick="ui.toggleSidebar()" class="mobile-only w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                    <i id="admin-icon" class="fas fa-user-shield"></i>
+                </button>
+            </div>
         </header>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6 space-y-6">
@@ -270,7 +374,7 @@
                     <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
                         <div class="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
                             <h3 class="font-bold text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                <i class="fas fa-route text-blue-600"></i> Hướng dẫn thực tế
+                                <i class="fas fa-route text-blue-600"></i> Hướng dẫn di chuyển
                             </h3>
                             <div class="flex gap-2">
                                 <button id="mute-btn" onclick="logic.toggleMute()" class="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 transition-all shadow-sm" title="Tắt âm thanh">
@@ -341,8 +445,9 @@
 
     <!-- MAP INTERFACE -->
     <main class="flex-1 map-container order-1 lg:order-2 sticky top-0 overflow-hidden shadow-inner">
-        <div onclick="ui.toggleSidebar()" class="toggle-sidebar-btn" title="Ẩn/Hiện Menu">
-            <i class="fas fa-chevron-left"></i>
+        <!-- Nút nổi di động dùng icon Search Location cố định cho đẹp -->
+        <div id="floating-toggle-btn" onclick="ui.toggleSidebar()" class="toggle-sidebar-btn" title="Ẩn/Hiện Menu">
+            <i class="fas fa-search-location"></i>
         </div>
         <div id="map"></div>
         <div class="absolute top-6 right-6 z-[1000] flex flex-col gap-3">
@@ -359,8 +464,8 @@
     </main>
 
     <!-- LOGIN MODAL -->
-    <div id="login-modal" class="fixed inset-0 z-[2000] bg-slate-900/70 flex items-center justify-center p-4 hidden backdrop-blur-sm">
-        <div class="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-2xl relative">
+    <div id="login-modal" class="fixed inset-0 z-[5000] bg-slate-900/70 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-white w-full max-sm:w-[90%] max-w-sm rounded-[3.5rem] p-10 shadow-2xl relative">
             <button onclick="ui.toggleAdminLogin()" class="absolute top-8 right-8 text-slate-400 hover:text-slate-900 transition-colors">
                 <i class="fas fa-times text-xl"></i>
             </button>
@@ -405,8 +510,11 @@
     let hasCenteredInitial = false;
     let startPointManualMarker = null;
     let currentPath = [];
-    let currentInstructions = []; 
     let selectedDestId = "";
+
+    // Touch Gesture state
+    let touchStartY = 0;
+    let isSwiping = false;
 
     const schoolGate = [10.735473, 106.680579];
 
@@ -423,8 +531,18 @@
 
     window.ui = {
         toggleSidebar: () => {
-            document.getElementById('main-sidebar').classList.toggle('sidebar-hidden');
-            setTimeout(() => map.invalidateSize(), 450);
+            const sidebar = document.getElementById('main-sidebar');
+            const isHidden = sidebar.classList.contains('sidebar-hidden');
+            
+            if (isHidden) {
+                sidebar.classList.remove('sidebar-hidden');
+            } else {
+                sidebar.classList.add('sidebar-hidden');
+            }
+
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 450);
         },
         toggleLayer: () => {
             isSatellite = !isSatellite;
@@ -436,8 +554,7 @@
         toggleAdminLogin: () => { 
             if (isAdmin) ui.logout(); 
             else {
-                const modal = document.getElementById('login-modal');
-                modal.classList.toggle('hidden');
+                document.getElementById('login-modal').classList.toggle('hidden');
             }
         },
         login: () => {
@@ -474,10 +591,12 @@
             googleRoadmap = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22 });
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView(schoolGate, 19);
             googleSatellite.addTo(map);
-            setTimeout(() => { map.invalidateSize(); }, 500);
-            L.marker(schoolGate, { icon: L.divIcon({ className: '', html: `<div class="marker-wrapper"><div class="marker-icon-box bg-red-600 shadow-xl border-white border-2 rounded-full"><i class="fas fa-door-open text-white"></i></div></div>`, iconSize: [36, 36], iconAnchor: [18, 18] }) }).addTo(map);
+            
+            L.marker(schoolGate, { icon: L.divIcon({ className: '', html: `<div class="marker-wrapper"><div class="marker-icon-box bg-red-600 shadow-xl border-white border-2 rounded-full flex items-center justify-center w-8 h-8"><i class="fas fa-door-open text-white text-xs"></i></div></div>`, iconSize: [32, 32], iconAnchor: [16, 16] }) }).addTo(map);
+            
             locationMarkersGroup.addTo(map);
             logic.startWatchingLocation();
+            
             map.on('click', (e) => {
                 if (isAdmin) {
                     document.getElementById('form-lat').value = e.latlng.lat.toFixed(7);
@@ -486,21 +605,56 @@
                     logic.setManualLocation(e.latlng);
                 }
             });
-            document.addEventListener('click', (e) => {
-                const results = document.getElementById('search-results');
-                if (results && !e.target.closest('#search-input') && !e.target.closest('#search-results')) {
-                    results.classList.add('hidden');
-                }
-            });
+
             await signInAnonymously(auth);
             logic.listenToFirestore();
             window.speechSynthesis.getVoices();
+
+            // GESTURE: Vuốt từ thanh ngang xuống để ẩn menu
+            const dragArea = document.getElementById('mobile-drag-area');
+            const sidebarHeader = document.getElementById('sidebar-header');
+
+            const handleTouchStart = (e) => {
+                touchStartY = e.touches[0].clientY;
+                isSwiping = true;
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isSwiping) return;
+                const touchCurrentY = e.touches[0].clientY;
+                // Nếu vuốt xuống hơn 40px
+                if (touchCurrentY - touchStartY > 40) {
+                    const sidebar = document.getElementById('main-sidebar');
+                    if (!sidebar.classList.contains('sidebar-hidden')) {
+                        ui.toggleSidebar();
+                        isSwiping = false;
+                    }
+                }
+            };
+
+            const handleTouchEnd = () => {
+                isSwiping = false;
+            };
+
+            [dragArea, sidebarHeader].forEach(el => {
+                el.addEventListener('touchstart', handleTouchStart, { passive: true });
+                el.addEventListener('touchmove', handleTouchMove, { passive: true });
+                el.addEventListener('touchend', handleTouchEnd);
+            });
+
+            // MOBILE AUTO FULL MAP
+            if (window.innerWidth < 1024) {
+                document.getElementById('main-sidebar').classList.add('sidebar-hidden');
+                setTimeout(() => {
+                    if(map) map.invalidateSize();
+                }, 600);
+            }
         },
 
         goHome: () => {
             logic.clearSearch();
             map.flyTo(schoolGate, 19);
-            ui.showMessage("Về trang chủ Home");
+            ui.showMessage("Về cổng trường");
         },
 
         toggleMute: () => {
@@ -520,16 +674,15 @@
 
         startWatchingLocation: () => {
             if ("geolocation" in navigator) {
-                const retryBtn = document.getElementById('retry-gps-btn');
                 navigator.geolocation.watchPosition(
                     (position) => {
-                        if(retryBtn) retryBtn.classList.add('hidden');
+                        document.getElementById('retry-gps-btn')?.classList.add('hidden');
                         if (!isManualMode) {
                             const { latitude, longitude, accuracy } = position.coords;
                             userLocation = [latitude, longitude];
                             logic.updateUserMarker();
                             logic.checkDirection(userLocation);
-                            safeSetText('gps-text', `GPS: Chính xác ±${Math.round(accuracy)}m`);
+                            safeSetText('gps-text', `Định vị: ±${Math.round(accuracy)}m`);
                             if (!hasCenteredInitial) {
                                 map.flyTo(userLocation, 21);
                                 hasCenteredInitial = true;
@@ -538,8 +691,8 @@
                     },
                     (err) => { 
                         if (!isManualMode) {
-                            if(retryBtn) retryBtn.classList.remove('hidden');
-                            safeSetText('gps-text', "GPS bị từ chối");
+                            document.getElementById('retry-gps-btn')?.classList.remove('hidden');
+                            safeSetText('gps-text', "GPS bị lỗi hoặc tắt");
                         }
                     },
                     { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
@@ -555,9 +708,9 @@
                 const d = u.distanceTo(p);
                 if (d < minDistance) minDistance = d;
             });
-            if (minDistance > 25) {
-                if(!isMuted) logic.speak("Bạn đang đi sai hướng, vui lòng quay lại lộ trình màu xanh.");
-                ui.showMessage("⚠️ Bạn đang đi lệch lộ trình!");
+            if (minDistance > 30) {
+                if(!isMuted) logic.speak("Bạn đang đi sai lộ trình, vui lòng quay lại.");
+                ui.showMessage("⚠️ Sai lộ trình!");
             }
         },
 
@@ -578,7 +731,7 @@
 
         recenterToUser: (withZoom = false) => {
             if (userLocation) map.flyTo(userLocation, withZoom ? 21 : 19);
-            else { ui.showMessage("Đang đợi tín hiệu GPS..."); logic.startWatchingLocation(); }
+            else { ui.showMessage("Đang đợi GPS..."); logic.startWatchingLocation(); }
         },
 
         recenter: () => { map.flyTo(schoolGate, 19); },
@@ -587,7 +740,7 @@
             isManualMode = !isManualMode;
             const btn = document.getElementById('manual-pos-btn');
             if (isManualMode) {
-                ui.showMessage("Chọn một điểm trên bản đồ để xác định nơi bạn đứng.");
+                ui.showMessage("Chạm vào bản đồ để chọn nơi bạn đứng");
                 btn.classList.add('bg-blue-600', 'text-white');
                 btn.innerHTML = '<i class="fas fa-times mr-1"></i> Hủy chọn thủ công';
             } else {
@@ -605,7 +758,7 @@
 
         setManualLocation: (latlng) => {
             if (startPointManualMarker) startPointManualMarker.setLatLng(latlng);
-            else startPointManualMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup("Vị trí xuất phát của bạn").openPopup();
+            else startPointManualMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup("Vị trí của bạn").openPopup();
             userLocation = [latlng.lat, latlng.lng];
             logic.updateUserMarker();
             if (selectedDestId) logic.selectLocation(selectedDestId);
@@ -619,7 +772,7 @@
             let viVoice = voices.find(v => v.lang.includes('vi'));
             utterance.voice = viVoice || voices[0];
             utterance.lang = 'vi-VN';
-            utterance.rate = 1.05;
+            utterance.rate = 1.0;
             window.speechSynthesis.speak(utterance);
         },
 
@@ -638,27 +791,19 @@
 
         translateInstruction: (instr) => {
             let t = instr.text;
-            const directionMap = {'North': 'Bắc', 'South': 'Nam', 'East': 'Đông', 'West': 'Tây', 'Northeast': 'Đông Bắc', 'Northwest': 'Tây Bắc', 'Southeast': 'Đông Nam', 'Southwest': 'Tây Nam'};
-            Object.keys(directionMap).forEach(key => { 
-                t = t.replace(new RegExp(`\\b${key}\\b`, 'gi'), directionMap[key]); 
+            const transMap = {
+                'Northwest': 'Tây Bắc', 'Northeast': 'Đông Bắc', 'Southwest': 'Tây Nam', 'Southeast': 'Đông Nam',
+                'North': 'Bắc', 'South': 'Nam', 'East': 'Đông', 'West': 'Tây',
+                'Head ': 'Đi về hướng ', 'Continue on ': 'Tiếp tục đi trên ',
+                'Turn left': 'Rẽ trái', 'Turn right': 'Rẽ phải', 'onto ': 'vào ', 'towards ': 'về phía ',
+                'at the roundabout': 'tại vòng xoay', 'take the (\\d+). exit': 'đi theo lối ra thứ $1',
+                'at your destination': 'tại điểm đến', 'your destination': 'điểm đến của bạn',
+                'on the right': 'bên tay phải', 'on the left': 'bên tay trái', 'You have arrived': 'Bạn đã đến nơi', 'Rẻ': 'Rẽ'
+            };
+            Object.keys(transMap).forEach(key => {
+                const regex = new RegExp(key, 'gi');
+                t = t.replace(regex, transMap[key]);
             });
-            
-            t = t.replace(/Head /gi, "Đi về hướng ")
-                 .replace(/Continue on /gi, "Tiếp tục đi trên ")
-                 .replace(/Turn left onto /gi, "Rẽ trái vào ")
-                 .replace(/Turn right onto /gi, "Rẽ phải vào ")
-                 .replace(/Turn left/gi, "Rẽ trái")
-                 .replace(/Turn right/gi, "Rẽ phải")
-                 .replace(/Rẻ/g, "Rẽ")
-                 .replace(/onto /gi, "vào ")
-                 .replace(/towards /gi, "về phía ")
-                 .replace(/at your destination/gi, "tại điểm đến")
-                 .replace(/your destination/gi, "điểm đến của bạn")
-                 .replace(/on the right/gi, "bên tay phải")
-                 .replace(/on the left/gi, "bên tay trái")
-                 .replace(/at /gi, "tại ")
-                 .replace(/the roundabout/gi, "vòng xuyến")
-                 .replace(/You have arrived/gi, "Bạn đã đến nơi");
             return t;
         },
 
@@ -723,7 +868,7 @@
             let filtered = locations.filter(l => isAdmin || l.visibility !== 'hidden');
             if (q) {
                 filtered = filtered.filter(l => {
-                    return l.name.toLowerCase().includes(q) || (typeMeta[l.type]?.label || "").toLowerCase().includes(q) || `lầu ${l.floor}`.toLowerCase().includes(q);
+                    return l.name.toLowerCase().includes(q) || (typeMeta[l.type]?.label || "").toLowerCase().includes(q);
                 });
             }
             if (filtered.length === 0) {
@@ -760,14 +905,8 @@
             if (!adminGroupedContainer) return;
             adminGroupedContainer.innerHTML = '';
             const floors = ["Trệt", "1", "2", "3", "4"];
-            const bghList = locations.filter(l => ['hieu-truong', 'pho-hieu-truong'].includes(l.type));
-            if (bghList.length > 0) {
-                const adminGroup = document.createElement('details'); adminGroup.className = 'admin-group';
-                adminGroup.innerHTML = `<summary>🏢 BAN GIÁM HIỆU (${bghList.length})</summary><div class="admin-group-content p-2">${bghList.map(l => logic.renderAdminItem(l)).join('')}</div>`;
-                adminGroupedContainer.appendChild(adminGroup);
-            }
             floors.forEach(f => {
-                const floorLocations = locations.filter(l => l.floor === f && !['hieu-truong', 'pho-hieu-truong'].includes(l.type));
+                const floorLocations = locations.filter(l => l.floor === f);
                 if (floorLocations.length > 0) {
                     const adminGroup = document.createElement('details'); adminGroup.className = 'admin-group';
                     let adminHtml = `<summary>📍 ${f === 'Trệt' ? 'TẦNG TRỆT' : 'TẦNG ' + f} (${floorLocations.length})</summary><div class="admin-group-content p-2">`;
@@ -779,7 +918,6 @@
                     adminGroupedContainer.appendChild(adminGroup);
                 }
             });
-            if (!document.getElementById('search-results').classList.contains('hidden')) logic.filterSearch(document.getElementById('search-input').value);
         },
 
         selectLocation: (id) => {
@@ -793,6 +931,14 @@
             if (loc) {
                 selectedDestId = id;
                 logic.updateSidebarInfo(loc);
+                if (window.innerWidth < 1024) {
+                    setTimeout(() => {
+                        const sidebar = document.getElementById('main-sidebar');
+                        if (!sidebar.classList.contains('sidebar-hidden')) {
+                            ui.toggleSidebar();
+                        }
+                    }, 800);
+                }
             }
         },
 
@@ -827,7 +973,7 @@
                 stepsContainer.innerHTML = '';
                 let voiceText = `Dẫn đường tới ${loc.name}. `;
                 if (isAtGate && loc.note) {
-                    loc.note.split('\n').filter(s => s.trim()).forEach((s, i) => {
+                    loc.note.split('\n').filter(s => s.trim()).forEach((s) => {
                         const d = document.createElement('div');
                         d.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm";
                         d.innerHTML = `<div class="shrink-0">${logic.getNavIcon(s)}</div><p class="text-sm font-bold text-slate-700 instr-text">${s}</p>`;
@@ -835,7 +981,7 @@
                         voiceText += `${s}. `;
                     });
                 } else {
-                    route.instructions.forEach((instr, i) => {
+                    route.instructions.forEach((instr) => {
                         const txt = logic.translateInstruction(instr);
                         const d = document.createElement('div');
                         d.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm";
@@ -863,7 +1009,7 @@
             logic.resetForm(); ui.showMessage("Đã cập nhật hệ thống!");
         },
 
-        resetForm: () => { document.getElementById('location-form').reset(); document.getElementById('form-id').value = ''; document.getElementById('form-visibility').value = 'public'; },
+        resetForm: () => { document.getElementById('location-form').reset(); document.getElementById('form-id').value = ''; },
         edit: (id) => {
             const loc = locations.find(l => l.id === id); if (!loc) return;
             ['id', 'name', 'area', 'floor', 'type', 'head', 'deputy', 'note', 'visibility'].forEach(f => { const el = document.getElementById(`form-${f}`); if (el) el.value = loc[f] || (f === 'visibility' ? 'public' : ''); });
