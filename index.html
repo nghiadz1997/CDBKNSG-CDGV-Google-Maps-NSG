@@ -198,12 +198,11 @@
                     </div>
                 </div>
 
-                <!-- NAVIGATION PANEL -->
                 <div id="navigation-panel" class="hidden space-y-5">
                     <div id="distance-card" class="bg-blue-600 p-6 rounded-[2rem] text-white flex justify-between items-center shadow-xl shadow-blue-100 border border-white/10">
                         <div>
-                            <p class="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-wider">Lộ trình đến đích</p>
-                            <p id="distance-val" class="text-2xl font-black uppercase">Đang tính...</p>
+                            <p class="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-wider">Trạng thái lộ trình</p>
+                            <p id="distance-val" class="text-xl font-black uppercase">Đang dẫn đường...</p>
                         </div>
                         <div class="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-sm">
                             <i class="fas fa-route text-2xl"></i>
@@ -216,7 +215,7 @@
                     </div>
 
                     <div id="instruction-card" class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
-                        <h3 class="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-5 border-b pb-3">Hướng dẫn di chuyển</h3>
+                        <h3 class="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-5 border-b pb-3">Chỉ dẫn di chuyển</h3>
                         <div id="step-list" class="space-y-4"></div>
                     </div>
                 </div>
@@ -304,12 +303,8 @@
             const sb = document.getElementById('main-sidebar');
             const toggleBtn = document.getElementById('toggle-menu-btn');
             const isHidden = sb.classList.toggle('sidebar-hidden');
-            
-            if (isHidden) {
-                toggleBtn.classList.remove('active');
-            } else {
-                toggleBtn.classList.add('active');
-            }
+            if (isHidden) toggleBtn.classList.remove('active');
+            else toggleBtn.classList.add('active');
             setTimeout(() => { map.invalidateSize(); }, 500);
         },
         toggleLayer: () => {
@@ -474,10 +469,12 @@
             graphLayerGroup.clearLayers();
             if (routingControl) map.removeControl(routingControl);
 
+            // LOGIC DẪN ĐƯỜNG KẾT HỢP (GPS NGOÀI -> CỔNG -> INDOOR)
             if (loc.graph && loc.graph.nodes && loc.graph.edges) {
                 const currentPos = userLocation || schoolGate;
                 let startNodeId = null, targetNodeId = null, minStartDist = Infinity, minEndDist = Infinity;
                 
+                // Tìm node gần nhất với người dùng và node gần nhất với đích
                 Object.entries(loc.graph.nodes).forEach(([id, nodeData]) => {
                     const dStart = logic.getDist(currentPos, [nodeData.lat, nodeData.lng]);
                     if (dStart < minStartDist) { minStartDist = dStart; startNodeId = id; }
@@ -485,7 +482,8 @@
                     if (dEnd < minEndDist) { minEndDist = dEnd; targetNodeId = id; }
                 });
 
-                if (userLocation && minStartDist > 40) {
+                // TRƯỜNG HỢP 1: NGƯỜI DÙNG Ở NGOÀI TRƯỜNG (Cách xa các điểm nội bộ > 45m)
+                if (userLocation && minStartDist > 45) {
                     document.getElementById('distance-val').innerText = "Đi tới cổng trường";
                     document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
                     
@@ -504,6 +502,7 @@
                             steps.appendChild(d);
                         });
                         
+                        // Sau khi tới cổng, vẽ tiếp đường vào trong từ node cổng trường
                         let gateStartNode = null, minGateDist = Infinity;
                         Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
                             const d = logic.getDist(schoolGate, [nd.lat, nd.lng]);
@@ -512,20 +511,24 @@
                         if (gateStartNode) logic.drawIndoorPath(loc.graph, gateStartNode, targetNodeId, loc);
                     });
                 } else {
+                    // TRƯỜNG HỢP 2: NGƯỜI DÙNG Ở TRONG KHUÔN VIÊN
                     document.getElementById('distance-val').innerText = "Dẫn đường nội khu";
                     document.getElementById('distance-card').classList.replace('bg-blue-600', 'bg-amber-600');
                     
+                    // SNAP: Vẽ đường từ GPS hiện tại tới node gần nhất (màu xanh)
                     if (startNodeId) {
-                        const node = loc.graph.nodes[startNodeId];
-                        L.polyline([currentPos, [node.lat, node.lng]], { color: '#3b82f6', weight: 4, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
+                        const nodeCoords = [loc.graph.nodes[startNodeId].lat, loc.graph.nodes[startNodeId].lng];
+                        L.polyline([currentPos, nodeCoords], { color: '#3b82f6', weight: 4, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
                         
-                        if (userLocation && minStartDist > 5) {
+                        // Chỉ hiển thị hướng dẫn snap nếu khoảng cách đáng kể (> 2m) và có GPS
+                        if (userLocation && minStartDist > 2) {
                             const snapStep = document.createElement('div');
                             snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-2xl border border-blue-200 shadow-sm";
-                            snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Di chuyển đến hành lang (${Math.round(minStartDist)}m)</p>`;
+                            snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Di chuyển đến hành lang gần nhất (${Math.round(minStartDist)}m)</p>`;
                             steps.appendChild(snapStep);
                         }
                     }
+                    // Vẽ phần còn lại chạy trong hành lang (màu vàng)
                     logic.drawIndoorPath(loc.graph, startNodeId, targetNodeId, loc);
                 }
 
@@ -537,8 +540,8 @@
 
                 document.getElementById('instruction-card').classList.toggle('hidden', steps.children.length === 0);
                 map.flyTo(loc.coords, 21);
-                // ĐÃ XÓA TỰ ĐỘNG PHÁT GIỌNG NÓI TẠI ĐÂY
             } else {
+                // CHẾ ĐỘ GPS CÔNG CỘNG (Nếu địa điểm không có sơ đồ node)
                 document.getElementById('instruction-card').classList.remove('hidden');
                 document.getElementById('distance-val').innerText = "Tính toán GPS...";
                 document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
@@ -568,7 +571,6 @@
                     });
                 });
                 map.flyTo(loc.coords, 21);
-                // ĐÃ XÓA TỰ ĐỘNG PHÁT GIỌNG NÓI TẠI ĐÂY
             }
         },
 
