@@ -20,7 +20,7 @@
         
         .app-wrapper { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
 
-        /* Sidebar Transition */
+        /* Sidebar Transition & Full Hide Logic */
         .sidebar-transition { 
             transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
             z-index: 3000;
@@ -64,7 +64,7 @@
         .btn-primary { background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%); transition: all 0.3s; }
         .btn-primary:active { transform: scale(0.96); }
 
-        /* Animations cho đường Node */
+        /* Animations */
         .internal-path { 
             stroke-dasharray: 12, 18; 
             stroke-linecap: round; 
@@ -92,6 +92,7 @@
             color: #1a73e8;
             border: 1px solid rgba(226, 232, 240, 0.8);
         }
+        #toggle-menu-btn:hover { background: #f8fafc; color: #1557b0; }
         #toggle-menu-btn.active { transform: scale(0); opacity: 0; pointer-events: none; }
 
         .map-overlay-tools {
@@ -199,7 +200,7 @@
                     <div id="distance-card" class="bg-blue-600 p-6 rounded-[2rem] text-white flex justify-between items-center shadow-xl shadow-blue-100 border border-white/10">
                         <div>
                             <p class="text-[10px] font-bold uppercase opacity-70 mb-1 tracking-wider">Trạng thái lộ trình</p>
-                            <p id="distance-val" class="text-xl font-black uppercase">Dẫn đường nội khu</p>
+                            <p id="distance-val" class="text-xl font-black uppercase">Đang dẫn đường...</p>
                         </div>
                         <div class="w-14 h-14 bg-white/15 rounded-2xl flex items-center justify-center backdrop-blur-sm">
                             <i class="fas fa-route text-2xl"></i>
@@ -421,55 +422,27 @@
             const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         },
-        
-        // CẬP NHẬT: Thuật toán Dijkstra cho cấu trúc Node JSON mới
         findShortestPath: (graph, startNodeId, endNodeId) => {
-            const nodes = graph.nodes;
-            const edges = graph.edges;
-            const distances = {};
-            const prev = {};
-            const queue = new Set(Object.keys(nodes));
-
-            Object.keys(nodes).forEach(id => {
-                distances[id] = Infinity;
-                prev[id] = null;
-            });
+            const nodes = graph.nodes, edges = graph.edges, distances = {}, prev = {}, queue = new Set(Object.keys(nodes));
+            Object.keys(nodes).forEach(id => { distances[id] = Infinity; prev[id] = null; });
             distances[startNodeId] = 0;
-
             while (queue.size > 0) {
                 let u = null;
-                for (const nodeId of queue) {
-                    if (u === null || distances[nodeId] < distances[u]) u = nodeId;
-                }
-
+                for (const nodeId of queue) { if (u === null || distances[nodeId] < distances[u]) u = nodeId; }
                 if (u === endNodeId || distances[u] === Infinity) break;
                 queue.delete(u);
-
-                const neighbors = edges[u] || [];
-                neighbors.forEach(edgeObj => {
+                (edges[u] || []).forEach(edgeObj => {
                     const v = edgeObj.to;
                     if (!queue.has(v)) return;
-                    
-                    const uCoords = [nodes[u].lat, nodes[u].lng];
-                    const vCoords = [nodes[v].lat, nodes[v].lng];
-                    
+                    const uCoords = [nodes[u].lat, nodes[u].lng], vCoords = [nodes[v].lat, nodes[v].lng];
                     const alt = distances[u] + logic.getDist(uCoords, vCoords);
-                    if (alt < distances[v]) {
-                        distances[v] = alt;
-                        prev[v] = u;
-                    }
+                    if (alt < distances[v]) { distances[v] = alt; prev[v] = u; }
                 });
             }
-
-            const path = []; 
-            let curr = endNodeId;
-            while (curr !== null) {
-                path.unshift(curr);
-                curr = prev[curr];
-            }
+            const path = []; let curr = endNodeId;
+            while (curr !== null) { path.unshift(curr); curr = prev[curr]; }
             return path.length > 1 && path[0] === startNodeId ? path : null;
         },
-
         selectLocation: (loc) => {
             currentSelectedLocation = loc;
             document.getElementById('welcome-panel').classList.add('hidden');
@@ -477,97 +450,91 @@
             document.getElementById('tts-btn').classList.remove('hidden');
             const steps = document.getElementById('step-list'); steps.innerHTML = "";
             const gallery = document.getElementById('image-gallery'); gallery.innerHTML = "";
-            (loc.images || []).forEach(url => {
+            (loc.images || []).filter(u => u.trim() !== "").forEach(url => {
                 const img = document.createElement('img'); img.src = getDirectImageUrl(url);
                 img.loading = "lazy"; img.onerror = () => img.src = "https://via.placeholder.com/400x220?text=Lỗi+ảnh";
                 gallery.appendChild(img);
             });
-            document.getElementById('image-gallery-container').classList.toggle('hidden', (loc.images || []).length === 0);
+            document.getElementById('image-gallery-container').classList.toggle('hidden', gallery.children.length === 0);
             
             graphLayerGroup.clearLayers();
             if (routingControl) map.removeControl(routingControl);
 
-            // CẬP NHẬT: Xử lý dựa trên cấu trúc Node mới
+            // LOGIC DẪN ĐƯỜNG THÔNG MINH
             if (loc.graph && loc.graph.nodes && loc.graph.edges) {
-                document.getElementById('distance-val').innerText = "Hành lang nội bộ";
-                document.getElementById('distance-card').classList.replace('bg-blue-600', 'bg-amber-600');
-                
                 const currentPos = userLocation || schoolGate;
                 let startNodeId = null, targetNodeId = null, minStartDist = Infinity, minEndDist = Infinity;
                 
                 Object.entries(loc.graph.nodes).forEach(([id, nodeData]) => {
-                    const nodeCoords = [nodeData.lat, nodeData.lng];
-                    const ds = logic.getDist(currentPos, nodeCoords);
-                    if (ds < minStartDist) { minStartDist = ds; startNodeId = id; }
-                    
-                    const de = logic.getDist(loc.coords, nodeCoords);
-                    if (de < minEndDist) { minEndDist = de; targetNodeId = id; }
+                    const dStart = logic.getDist(currentPos, [nodeData.lat, nodeData.lng]);
+                    if (dStart < minStartDist) { minStartDist = dStart; startNodeId = id; }
+                    const dEnd = logic.getDist(loc.coords, [nodeData.lat, nodeData.lng]);
+                    if (dEnd < minEndDist) { minEndDist = dEnd; targetNodeId = id; }
                 });
 
-                if (startNodeId) {
-                    const startNode = loc.graph.nodes[startNodeId];
-                    const startCoords = [startNode.lat, startNode.lng];
-                    L.polyline([currentPos, startCoords], { color: '#3b82f6', weight: 4, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
+                // TRƯỜNG HỢP 1: Ở NGOÀI TRƯỜNG (Dùng GPS tới cổng trường trước)
+                if (userLocation && minStartDist > 40) {
+                    document.getElementById('distance-val').innerText = "Đi tới cổng trường";
+                    document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
                     
-                    if (userLocation && minStartDist > 5) {
-                        const snapStep = document.createElement('div');
-                        snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-2xl border border-blue-200 shadow-sm";
-                        snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Di chuyển đến điểm hành lang gần nhất (${Math.round(minStartDist)}m)</p>`;
-                        steps.appendChild(snapStep);
+                    // Route GPS từ hiện tại tới Cổng
+                    routingControl = L.Routing.control({
+                        waypoints: [L.latLng(userLocation[0], userLocation[1]), L.latLng(schoolGate[0], schoolGate[1])],
+                        language: 'vi', lineOptions: { styles: [{ color: '#1a73e8', weight: 6, className: 'leaflet-ant-path' }] },
+                        createMarker: () => null, addWaypoints: false, show: false
+                    }).addTo(map);
+
+                    routingControl.on('routesfound', (e) => {
+                        const route = e.routes[0];
+                        document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} M tới cổng`;
+                        route.instructions.forEach(ins => {
+                            const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
+                            d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-xs font-bold text-slate-600">${ins.text}</p>`;
+                            steps.appendChild(d);
+                        });
+                        
+                        // Vẽ thêm đoạn từ cổng vào trong phòng bằng Node (Vàng)
+                        let gateStartNode = null, minGateDist = Infinity;
+                        Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
+                            const d = logic.getDist(schoolGate, [nd.lat, nd.lng]);
+                            if (d < minGateDist) { minGateDist = d; gateStartNode = id; }
+                        });
+                        if (gateStartNode) logic.drawIndoorPath(loc.graph, gateStartNode, targetNodeId, loc);
+                    });
+                } else {
+                    // TRƯỜNG HỢP 2: Ở TRONG TRƯỜNG (Snap Node gần nhất)
+                    document.getElementById('distance-val').innerText = "Dẫn đường nội khu";
+                    document.getElementById('distance-card').classList.replace('bg-blue-600', 'bg-amber-600');
+                    
+                    // Vẽ Snap Line (Xanh) nếu ở xa Node một chút
+                    if (minStartDist > 5) {
+                        const node = loc.graph.nodes[startNodeId];
+                        L.polyline([currentPos, [node.lat, node.lng]], { color: '#3b82f6', weight: 4, className: 'snap-connection', opacity: 0.8 }).addTo(graphLayerGroup);
+                        
+                        // Chỉ hướng dẫn snap nếu thực sự dùng GPS
+                        if (userLocation) {
+                            const snapStep = document.createElement('div');
+                            snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-2xl border border-blue-200 shadow-sm";
+                            snapStep.innerHTML = `<i class="fas fa-location-arrow text-blue-600"></i><p class="instr-text text-sm font-bold text-blue-900">Di chuyển đến hành lang (${Math.round(minStartDist)}m)</p>`;
+                            steps.appendChild(snapStep);
+                        }
                     }
+                    logic.drawIndoorPath(loc.graph, startNodeId, targetNodeId, loc);
                 }
 
-                const pathIds = logic.findShortestPath(loc.graph, startNodeId, targetNodeId);
-                let lastHallwayCoords = null;
-
-                if (pathIds) {
-                    const pathCoords = pathIds.map(id => [loc.graph.nodes[id].lat, loc.graph.nodes[id].lng]);
-                    L.polyline(pathCoords, { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 1 }).addTo(graphLayerGroup);
-                    pathIds.forEach(id => {
-                        const n = loc.graph.nodes[id];
-                        L.circleMarker([n.lat, n.lng], { radius: 3, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 1.5 }).addTo(graphLayerGroup);
-                    });
-                    const lastNode = loc.graph.nodes[pathIds[pathIds.length - 1]];
-                    lastHallwayCoords = [lastNode.lat, lastNode.lng];
-                } else if (startNodeId) {
-                    const startNode = loc.graph.nodes[startNodeId];
-                    lastHallwayCoords = [startNode.lat, startNode.lng];
-                }
-
-                if (lastHallwayCoords) {
-                    L.polyline([lastHallwayCoords, loc.coords], { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 1 }).addTo(graphLayerGroup);
-                    const finishStep = document.createElement('div');
-                    finishStep.className = "flex gap-3 items-center bg-amber-50 p-4 rounded-2xl border border-amber-200 shadow-sm";
-                    finishStep.innerHTML = `<i class="fas fa-walking text-amber-600"></i><p class="instr-text text-sm font-bold text-amber-900">Đi vào ${loc.name}</p>`;
-                    steps.appendChild(finishStep);
-                }
-
-                if (loc.note) {
-                    loc.note.split('\n').filter(s => s.trim()).forEach(s => {
-                        const d = document.createElement('div'); 
-                        d.className = "flex gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200";
-                        d.innerHTML = `<i class="fas fa-info-circle text-slate-400"></i><p class="instr-text text-xs font-bold text-slate-700">${s}</p>`;
-                        steps.appendChild(d);
-                    });
-                }
+                if (loc.note) loc.note.split('\n').filter(s => s.trim()).forEach(s => {
+                    const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200";
+                    d.innerHTML = `<i class="fas fa-info-circle text-slate-400"></i><p class="instr-text text-xs font-bold text-slate-700">${s}</p>`;
+                    steps.appendChild(d);
+                });
 
                 document.getElementById('instruction-card').classList.toggle('hidden', steps.children.length === 0);
                 map.flyTo(loc.coords, 21);
                 setTimeout(() => { logic.toggleVoice(); }, 1200);
             } else {
-                document.getElementById('instruction-card').classList.remove('hidden');
+                // CHẾ ĐỘ GPS CÔNG CỘNG (Nếu không có Graph)
                 document.getElementById('distance-val').innerText = "Tính toán GPS...";
                 document.getElementById('distance-card').classList.replace('bg-amber-600', 'bg-blue-600');
-                
-                if (loc.note) {
-                    loc.note.split('\n').filter(s => s.trim()).forEach(s => {
-                        const d = document.createElement('div'); 
-                        d.className = "flex gap-3 items-center bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-2";
-                        d.innerHTML = `<i class="fas fa-info-circle text-slate-400"></i><p class="instr-text text-xs font-bold text-slate-700">${s}</p>`;
-                        steps.appendChild(d);
-                    });
-                }
-
                 const start = userLocation || schoolGate;
                 routingControl = L.Routing.control({
                     waypoints: [L.latLng(start[0], start[1]), L.latLng(loc.coords[0], loc.coords[1])],
@@ -579,7 +546,7 @@
                     document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} MÉT`;
                     route.instructions.forEach(ins => {
                         const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100";
-                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-[11px] font-bold text-slate-600">${ins.text}</p>`;
+                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="instr-text text-xs font-bold text-slate-600">${ins.text}</p>`;
                         steps.appendChild(d);
                     });
                 });
@@ -587,27 +554,23 @@
             }
         },
 
-        // CẬP NHẬT: Vẽ đồ thị nội bộ với cấu trúc dữ liệu mới
-        drawInternalGraph: (graph) => {
-            const processed = new Set();
-            Object.keys(graph.edges).forEach(startId => {
-                const startNode = graph.nodes[startId];
-                if (!startNode) return;
-                const startPoint = [startNode.lat, startNode.lng];
-
-                graph.edges[startId].forEach(edgeObj => {
-                    const endNode = graph.nodes[edgeObj.to];
-                    if (!endNode) return;
-                    const endPoint = [endNode.lat, endNode.lng];
-
-                    const key = [startId, edgeObj.to].sort().join('-');
-                    if (!processed.has(key)) {
-                        L.polyline([startPoint, endPoint], { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 0.9 }).addTo(graphLayerGroup);
-                        processed.add(key);
-                    }
+        // Hàm phụ trợ vẽ đường hành lang nội bộ
+        drawIndoorPath: (graph, startNodeId, targetNodeId, loc) => {
+            const pathIds = logic.findShortestPath(graph, startNodeId, targetNodeId);
+            let lastHallwayCoords = null;
+            if (pathIds) {
+                const pathCoords = pathIds.map(id => [graph.nodes[id].lat, graph.nodes[id].lng]);
+                L.polyline(pathCoords, { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 1 }).addTo(graphLayerGroup);
+                pathIds.forEach(id => {
+                    const n = graph.nodes[id];
+                    L.circleMarker([n.lat, n.lng], { radius: 3, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 1.5 }).addTo(graphLayerGroup);
                 });
-                L.circleMarker(startPoint, { radius: 4, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 2 }).addTo(graphLayerGroup);
-            });
+                lastHallwayCoords = [graph.nodes[pathIds[pathIds.length - 1]].lat, graph.nodes[pathIds[pathIds.length - 1]].lng];
+            } else {
+                lastHallwayCoords = [graph.nodes[startNodeId].lat, graph.nodes[startNodeId].lng];
+            }
+            // Luôn nối đoạn cuối vào tâm phòng
+            L.polyline([lastHallwayCoords, loc.coords], { color: '#fbbf24', weight: 8, className: 'internal-path', opacity: 1 }).addTo(graphLayerGroup);
         },
 
         speak: (text) => {
@@ -672,6 +635,7 @@
             document.getElementById('form-lng').value = l.coords[1];
             document.getElementById('form-note').value = l.note || "";
             document.getElementById('form-graph-json').value = l.graph ? JSON.stringify(l.graph, null, 2) : "";
+            document.getElementById('form-images-links').value = (l.images || []).join('\n');
             document.getElementById('form-hidden').checked = l.isHidden || false;
             ui.updateStatusLabel(l.isHidden);
             window.scrollTo({ top: 0, behavior: 'smooth' });
