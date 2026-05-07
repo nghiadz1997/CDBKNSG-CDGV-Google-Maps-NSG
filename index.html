@@ -2,8 +2,8 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NSG Navigator Pro - Hybrid Routing</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nam Sài Gòn Navigator - Hệ thống Định vị Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
@@ -14,200 +14,574 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; overflow: hidden; margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100vw; background: #e5e7eb; }
-        .app-wrapper { position: relative; height: 100vh; width: 100vw; overflow: hidden; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; transition: all 0.3s ease; }
+        
+        #map { height: 100%; width: 100%; min-height: 400px; background: #e5e7eb; }
+        
+        .map-container {
+            height: 50vh;
+            width: 100%;
+            position: relative;
+        }
 
-        /* Sidebar & UI */
-        .sidebar-transition { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); z-index: 3000; position: fixed; background: white; display: flex; flex-direction: column; box-shadow: 0 0 40px rgba(0,0,0,0.15); }
-        @media (max-width: 1023px) {
-            #main-sidebar { bottom: 0; left: 0; right: 0; height: 80vh; width: 100%; transform: translateY(0); border-radius: 2.5rem 2.5rem 0 0; }
-            #main-sidebar.sidebar-hidden { transform: translateY(100%) !important; }
-        }
         @media (min-width: 1024px) {
-            #main-sidebar { top: 0; left: 0; bottom: 0; width: 420px; transform: translateX(0); height: 100%; }
-            #main-sidebar.sidebar-hidden { transform: translateX(-100%) !important; }
+            .map-container { height: 100vh; }
         }
+
+        .sidebar-transition { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease; }
 
         .leaflet-routing-container { display: none !important; }
         
-        /* Animations cho đường nội bộ */
-        .internal-path { stroke-dasharray: 10, 15; stroke-linecap: round; animation: dash-internal 1.2s linear infinite; }
-        @keyframes dash-internal { from { stroke-dashoffset: 25; } to { stroke-dashoffset: 0; } }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-primary:active { transform: scale(0.96); }
+
+        .image-gallery {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            padding: 4px 0 12px 0;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+        }
+        .image-gallery img {
+            flex: 0 0 100%;
+            scroll-snap-align: start;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            background-color: #f3f4f6;
+        }
+
+        .leaflet-ant-path {
+            stroke-dasharray: 10, 20;
+            animation: dash 1s linear infinite;
+        }
+        @keyframes dash {
+            from { stroke-dashoffset: 30; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .user-location-container {
+            position: relative;
+            width: 24px;
+            height: 24px;
+        }
+        .blue-dot {
+            width: 16px;
+            height: 16px;
+            background: #1a73e8;
+            border: 3px solid white;
+            border-radius: 50%;
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            z-index: 5;
+            box-shadow: 0 0 6px rgba(0,0,0,0.4);
+        }
+        .pulse-ring {
+            width: 44px;
+            height: 44px;
+            background: rgba(66, 133, 244, 0.3);
+            border-radius: 50%;
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            animation: pulse-animation 2.5s infinite;
+        }
+        @keyframes pulse-animation {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .nav-icon-svg { width: 32px; height: 32px; stroke: #1a73e8; stroke-width: 5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+        .admin-group { background: white; border-radius: 1rem; overflow: hidden; margin-bottom: 0.75rem; border: 1px solid #e2e8f0; }
+        .admin-group summary { padding: 1rem; background: #f8fafc; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: #1e40af; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+        .admin-group summary::-webkit-details-marker { display: none; }
+        .admin-group summary::after { content: '\f078'; font-family: 'Font Awesome 5 Free'; font-weight: 900; transition: 0.3s; }
+        .admin-group[open] summary::after { transform: rotate(180deg); }
+
+        .search-results {
+            max-height: 380px;
+            overflow-y: auto;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+        }
+        .search-item {
+            padding: 1rem;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+        .search-item:hover { background-color: #f0f7ff; }
         
-        .snap-connection { stroke-dasharray: 5, 8; animation: dash-snap 2s linear infinite; }
-        @keyframes dash-snap { from { stroke-dashoffset: 13; } to { stroke-dashoffset: 0; } }
+        .search-item-icon {
+            width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
 
-        .pulse-ring { width: 30px; height: 30px; background: rgba(26, 115, 232, 0.3); border-radius: 50%; position: absolute; top: -7px; left: -7px; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(1.8); opacity: 0; } }
-        .blue-dot { width: 16px; height: 16px; background: #1a73e8; border: 3px solid white; border-radius: 50%; position: relative; z-index: 2; }
+        .toggle-sidebar-btn {
+            position: absolute;
+            top: 24px;
+            left: 0;
+            z-index: 1001;
+            width: 32px;
+            height: 48px;
+            background: white;
+            border-radius: 0 12px 12px 0;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #1a73e8;
+            transition: all 0.3s;
+        }
+        .toggle-sidebar-btn:hover { background: #f8fafc; padding-left: 5px; }
 
-        #toggle-menu-btn { position: fixed; left: 1.25rem; top: 1.25rem; z-index: 2000; background: white; width: 3.5rem; height: 3.5rem; border-radius: 1.25rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 25px rgba(0,0,0,0.15); color: #1a73e8; transition: all 0.4s; }
-        #toggle-menu-btn.active { transform: scale(0); opacity: 0; }
+        .sidebar-hidden { transform: translateX(-100%); width: 0 !important; overflow: hidden; }
 
-        .search-results { max-height: 40vh; overflow-y: auto; position: absolute; top: 110%; left: 0; right: 0; z-index: 4000; background: white; border-radius: 1.5rem; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.2); border: 1px solid #e2e8f0; }
-        .search-item { padding: 1rem; cursor: pointer; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #f1f5f9; }
-        .image-gallery { display: flex; gap: 10px; overflow-x: auto; padding: 4px; }
-        .image-gallery img { flex: 0 0 85%; height: 160px; object-fit: cover; border-radius: 1.25rem; background: #f8fafc; }
+        .admin-sub-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; padding: 0.5rem 0.5rem 0.25rem 0.5rem; }
+
+        /* =========================
+           MOBILE FULL MAP MODE
+        ========================= */
+        @media (max-width: 1023px) {
+            #main-sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                height: 85vh; /* Giảm nhẹ độ cao để thấy bản đồ phía trên */
+                z-index: 4000;
+                border-radius: 2.5rem 2.5rem 0 0;
+                transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+                box-shadow: 0 -15px 50px rgba(0,0,0,0.3);
+                background: white;
+                margin-top: 0;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .sidebar-hidden {
+                transform: translateY(100%) !important;
+                opacity: 0 !important;
+                pointer-events: none;
+            }
+
+            main.map-container {
+                width: 100% !important;
+                height: 100vh !important;
+                position: fixed;
+                inset: 0;
+                z-index: 1;
+            }
+
+            #map {
+                height: 100vh !important;
+                width: 100vw !important;
+            }
+
+            .toggle-sidebar-btn {
+                top: auto;
+                bottom: 30px;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 60px;
+                height: 60px;
+                border-radius: 999px;
+                background: white;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                z-index: 3000;
+                border: 3px solid #1a73e8;
+            }
+
+            /* Loại bỏ hiệu ứng xoay icon trên di động theo yêu cầu */
+            .toggle-sidebar-btn i {
+                font-size: 22px;
+                transform: none !important;
+            }
+            
+            .mobile-only { display: block; }
+            .desktop-only { display: none; }
+        }
+
+        @media (min-width: 1024px) {
+            .mobile-only { display: none; }
+            .desktop-only { display: block; }
+            .sidebar-hidden + main .toggle-sidebar-btn i { transform: rotate(180deg); }
+        }
+
+        /* Styling cho thanh ngang kéo xuống (Drag Handle) */
+        .drag-handle-container {
+            width: 100%;
+            padding: 14px 0 10px;
+            cursor: ns-resize;
+            touch-action: none;
+            background: white;
+            border-radius: 2.5rem 2.5rem 0 0;
+        }
+
+        .drag-handle {
+            width: 50px;
+            height: 5px;
+            background: #cbd5e1;
+            border-radius: 10px;
+            margin: 0 auto;
+            transition: background 0.2s;
+        }
         
-        .switch { position: relative; display: inline-block; width: 44px; height: 22px; }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 22px; }
-        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-        input:checked + .slider { background-color: #1a73e8; }
-        input:checked + .slider:before { transform: translateX(22px); }
+        .drag-handle-container:active .drag-handle {
+            background: #94a3b8;
+        }
     </style>
 </head>
-<body class="antialiased text-slate-900">
+<body class="overflow-x-hidden antialiased text-slate-900">
 
-<div id="app" class="app-wrapper">
-    <div id="map"></div>
+<div id="app" class="flex flex-col lg:flex-row min-h-screen relative">
+    
+    <!-- SIDEBAR -->
+    <aside id="main-sidebar" class="w-full lg:w-[420px] xl:w-[480px] flex flex-col z-20 shadow-2xl bg-white lg:h-screen sidebar-transition order-2 lg:order-1 border-t lg:border-t-0 lg:border-r border-slate-200 rounded-t-[2.5rem] lg:rounded-t-none -mt-10 lg:mt-0">
+        
+        <!-- Drag handle thanh ngang hiện đại cho mobile -->
+        <div id="mobile-drag-area" class="mobile-only drag-handle-container">
+            <div class="drag-handle"></div>
+        </div>
 
-    <button id="toggle-menu-btn" onclick="ui.toggleSidebar()">
-        <i class="fas fa-bars text-xl"></i>
-    </button>
-
-    <div class="fixed top-5 right-5 z-[2000] flex flex-col gap-3">
-        <button onclick="ui.toggleLayer()" class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-blue-600"><i id="layer-icon" class="fas fa-satellite"></i></button>
-        <button onclick="logic.recenterToUser(true)" class="w-12 h-12 bg-white rounded-2xl shadow-lg flex items-center justify-center text-blue-600"><i class="fas fa-location-arrow"></i></button>
-    </div>
-
-    <aside id="main-sidebar" class="sidebar-transition sidebar-hidden">
-        <div class="lg:hidden w-full flex justify-center py-4" onclick="ui.toggleSidebar()"><div class="w-12 h-1.5 bg-slate-200 rounded-full"></div></div>
-
-        <header class="px-6 py-5 bg-blue-700 text-white flex justify-between items-center shrink-0">
-            <div onclick="logic.goHome()" class="cursor-pointer">
-                <h1 class="text-xl font-black tracking-tight uppercase">Navigator PRO</h1>
-                <p class="text-[9px] font-bold opacity-70 tracking-widest">NAM SAI GON POLYTECHNIC</p>
+        <header id="sidebar-header" class="p-5 lg:p-6 bg-blue-700 text-white flex justify-between items-center shrink-0 shadow-lg relative">
+            <div onclick="logic.goHome()" class="cursor-pointer group">
+                <h1 class="text-xl font-extrabold tracking-tighter leading-none uppercase group-hover:text-blue-200 transition-colors">Navigator PRO</h1>
+                <p class="text-[10px] opacity-70 uppercase tracking-[0.2em] font-bold mt-1 group-hover:opacity-100">CĐBK Nam Sài Gòn <i class="fas fa-home ml-1 text-[8px]"></i></p>
             </div>
             <div class="flex gap-2">
-                <button onclick="ui.toggleAdminLogin()" class="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center"><i id="admin-icon" class="fas fa-user-shield text-xs"></i></button>
-                <button onclick="ui.toggleSidebar()" class="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center"><i class="fas fa-times text-xs"></i></button>
+                <!-- Nút ẩn menu cho di động -->
+                <button onclick="ui.toggleSidebar()" class="mobile-only w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                    <i class="fas fa-times"></i>
+                </button>
+                <button onclick="ui.toggleAdminLogin()" class="w-10 h-10 bg-white/10 hover:bg-white/20 rounded-2xl flex items-center justify-center transition-all">
+                    <i id="admin-icon" class="fas fa-user-shield"></i>
+                </button>
             </div>
         </header>
 
-        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+        <div class="flex-1 overflow-y-auto custom-scrollbar p-5 lg:p-6 space-y-6">
+            
             <div id="user-view" class="space-y-6">
-                <div class="relative">
-                    <input type="text" id="search-input" onfocus="logic.showSearch()" oninput="logic.filterSearch(this.value)"
-                        class="w-full p-4 pl-12 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none bg-slate-50 font-bold transition-all text-sm" 
-                        placeholder="Tìm phòng học, văn phòng...">
-                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
-                    <div id="search-results" class="search-results hidden"></div>
-                </div>
-
-                <div id="welcome-panel" class="bg-blue-50/50 rounded-[2.5rem] p-8 border border-blue-100 text-center">
-                    <div class="w-16 h-16 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-4 text-blue-600"><i class="fas fa-map-marked-alt text-2xl"></i></div>
-                    <h2 class="text-lg font-extrabold text-blue-900 leading-tight">NSG Polytechnic<br>Indoor Navigation</h2>
-                    <div id="gps-status" class="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full text-[10px] font-black text-blue-600 uppercase border border-blue-100">
-                        <span class="relative flex h-2 w-2"><span class="animate-ping absolute h-full w-full rounded-full bg-blue-400 opacity-75"></span><span class="relative h-2 w-2 rounded-full bg-blue-500"></span></span>
-                        <span id="gps-text">Đang lấy GPS...</span>
+                <!-- Selection Header -->
+                <div class="space-y-4">
+                    <div class="flex justify-between items-end">
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Đích đến của bạn</label>
+                        <button id="manual-pos-btn" onclick="logic.toggleManualMode()" class="text-[9px] font-black text-blue-600 uppercase bg-blue-50 px-3 py-1 rounded-lg hover:bg-blue-100 transition-all shadow-sm">
+                            <i class="fas fa-hand-pointer mr-1"></i> Chọn vị trí thủ công
+                        </button>
                     </div>
-                </div>
-
-                <div id="navigation-panel" class="hidden space-y-4">
-                    <div id="distance-card" class="bg-blue-600 p-5 rounded-[1.5rem] text-white flex justify-between items-center shadow-xl">
-                        <div>
-                            <p id="route-type-label" class="text-[9px] font-bold uppercase opacity-70 mb-1">Chế độ dẫn đường</p>
-                            <p id="distance-val" class="text-lg font-black uppercase">Đang tính...</p>
+                    
+                    <div class="relative">
+                        <div class="relative group">
+                            <input type="text" id="search-input" 
+                                onfocus="logic.showSearch()" 
+                                oninput="logic.filterSearch(this.value)"
+                                autocomplete="off"
+                                class="w-full p-4 pl-12 border-2 border-slate-100 rounded-2xl focus:border-blue-500 outline-none bg-slate-50 text-slate-800 font-bold transition-all shadow-sm" 
+                                placeholder="Bạn muốn đi đâu? (vd: Phòng A0.6, Phòng Học...)">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-blue-500"></i>
+                            <button onclick="logic.clearSearch()" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
                         </div>
-                        <i id="route-icon" class="fas fa-route text-2xl opacity-50"></i>
+                        <div id="search-results" class="search-results hidden custom-scrollbar"></div>
+                    </div>
+                </div>
+
+                <!-- Welcome Feedback -->
+                <div id="welcome-panel" class="bg-gradient-to-b from-blue-50 to-white rounded-[2rem] p-8 border border-blue-100 text-center shadow-sm">
+                    <div class="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6 border-4 border-blue-50 transition-transform hover:scale-105">
+                        <i id="status-icon" class="fas fa-university text-3xl text-blue-600"></i>
+                    </div>
+                    <h2 id="status-title" class="text-xl font-extrabold text-blue-900 tracking-tight leading-tight">
+                        Chào mừng bạn đến với<br>Trường CĐ Bách khoa Nam Sài Gòn
+                    </h2>
+                    <p id="location-status-text" class="text-xs text-slate-500 mt-4 font-medium leading-relaxed">
+                        Hệ thống hỗ trợ tìm kiếm phòng học và dẫn đường nội khu thông minh.
+                    </p>
+
+                    <div id="gps-status-indicator" class="mt-8 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-full text-[9px] font-bold text-blue-600 uppercase tracking-wider">
+                        <span id="gps-dot" class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        </span>
+                        <span id="gps-text">Đang khởi tạo GPS...</span>
+                    </div>
+                    <button id="retry-gps-btn" onclick="logic.startWatchingLocation()" class="hidden mt-6 w-full bg-blue-600 text-white text-[10px] font-black py-4 rounded-2xl uppercase shadow-lg active:scale-95 transition-all">
+                        <i class="fas fa-redo mr-2"></i> Thử kích hoạt lại GPS
+                    </button>
+                </div>
+
+                <!-- Navigation Details -->
+                <div id="navigation-panel" class="hidden space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-5 rounded-[2rem] text-white flex items-center justify-between shadow-xl shadow-blue-200">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                                <i class="fas fa-walking text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-widest opacity-80">Quãng đường</p>
+                                <p id="distance-label" class="text-sm font-bold">Lộ trình ngắn nhất</p>
+                            </div>
+                        </div>
+                        <span id="distance-val" class="text-3xl font-black">0 m</span>
                     </div>
 
-                    <div id="image-gallery-container" class="hidden space-y-2">
-                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Hình ảnh điểm đến</p>
+                    <div id="office-contact-card" class="hidden bg-white border border-slate-100 rounded-[2rem] p-5 shadow-sm">
+                        <div class="flex items-center gap-4 mb-3">
+                            <div class="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 shrink-0 shadow-sm"><i class="fas fa-user-tie text-xl"></i></div>
+                            <div>
+                                <p id="head-title-label" class="text-[9px] font-bold text-slate-400 uppercase">Trưởng đơn vị</p>
+                                <p id="head-name" class="text-base font-extrabold text-slate-800"></p>
+                            </div>
+                        </div>
+                        <div id="deputy-container" class="flex items-center gap-4 border-t border-slate-50 pt-3">
+                            <div class="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 shrink-0"><i class="fas fa-user-friends text-xl"></i></div>
+                            <div>
+                                <p class="text-[9px] font-bold text-slate-400 uppercase">Cấp phó</p>
+                                <p id="deputy-name" class="text-sm font-bold text-slate-700"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="image-gallery-container" class="hidden bg-slate-100/50 rounded-[2rem] p-5 border border-white">
                         <div id="image-gallery" class="image-gallery"></div>
                     </div>
 
-                    <div id="instruction-card" class="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
-                        <h3 class="font-black text-[10px] text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">Hướng dẫn di chuyển</h3>
-                        <div id="step-list" class="space-y-3"></div>
+                    <div class="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-50 pb-3">
+                            <h3 class="font-bold text-[10px] text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fas fa-route text-blue-600"></i> Hướng dẫn di chuyển
+                            </h3>
+                            <div class="flex gap-2">
+                                <button id="mute-btn" onclick="logic.toggleMute()" class="w-10 h-10 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-slate-100 transition-all shadow-sm" title="Tắt âm thanh">
+                                    <i id="mute-icon" class="fas fa-volume-up"></i>
+                                </button>
+                                <button id="voice-btn" onclick="logic.toggleVoice()" class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-all shadow-sm" title="Nghe lại">
+                                    <i id="voice-icon" class="fas fa-play"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="step-list" class="space-y-4"></div>
                     </div>
+
+                    <a id="open-google-maps" href="#" target="_blank" class="flex w-full bg-slate-900 text-white font-black py-5 rounded-2xl items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+                        <i class="fab fa-google text-lg text-blue-400"></i> MỞ GOOGLE MAPS
+                    </a>
                 </div>
             </div>
 
-            <!-- Admin (Simplified) -->
-            <div id="admin-panel" class="hidden space-y-4">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-xs font-black text-blue-600 uppercase">Quản lý Nodes</h2>
-                    <button onclick="ui.logout()" class="text-[9px] font-bold text-red-500 uppercase bg-red-50 px-2 py-1 rounded-lg">Đăng xuất</button>
+            <!-- ADMIN PANEL -->
+            <div id="admin-panel" class="hidden space-y-6 bg-slate-50/50 min-h-full pb-20">
+                <div class="flex justify-between items-center border-b border-slate-200 pb-4">
+                    <h2 class="text-lg font-black text-blue-600 uppercase">Quản lý Dữ liệu</h2>
+                    <button onclick="ui.logout()" class="text-[10px] font-black text-red-500 bg-red-100 px-4 py-2 rounded-xl uppercase hover:bg-red-200 transition-all">Đăng xuất</button>
                 </div>
-                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-3">
+                <form id="location-form" onsubmit="logic.handleSaveLocation(event)" class="space-y-4">
                     <input type="hidden" id="form-id">
-                    <input type="text" id="form-name" required class="w-full p-3 border rounded-xl bg-slate-50 font-bold text-sm" placeholder="Tên phòng">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" step="any" id="form-lat" required class="p-3 border rounded-xl bg-amber-50 font-mono text-[10px]" placeholder="Lat">
-                        <input type="number" step="any" id="form-lng" required class="p-3 border rounded-xl bg-amber-50 font-mono text-[10px]" placeholder="Lng">
+                    <div class="space-y-4 bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
+                        <input type="text" id="form-name" required class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold focus:border-blue-500 outline-none" placeholder="Tên địa điểm">
+                        <div class="grid grid-cols-2 gap-4">
+                            <select id="form-area" required class="p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold outline-none">
+                                <option value="A">Khu A</option><option value="B">Khu B</option><option value="C">Khu C</option><option value="D">Khu D</option><option value="Khác">Khác</option>
+                            </select>
+                            <select id="form-floor" required class="p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold outline-none">
+                                <option value="Trệt">Trệt</option><option value="1">Lầu 1</option><option value="2">Lầu 2</option><option value="3">Lầu 3</option><option value="4">Lầu 4</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <select id="form-type" required class="p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 font-bold outline-none">
+                                <option value="phong-hoc">Phòng học</option>
+                                <option value="hieu-truong">Hiệu Trưởng</option>
+                                <option value="pho-hieu-truong">Phó Hiệu Trưởng</option>
+                                <option value="vp-khoa">Văn phòng Khoa</option>
+                                <option value="hanh-chinh">Hành chính</option>
+                                <option value="phong-chuc-nang">Phòng chức năng</option>
+                            </select>
+                            <select id="form-visibility" required class="p-4 border-2 border-slate-100 rounded-2xl bg-blue-50 text-blue-700 font-bold outline-none">
+                                <option value="public">Công khai</option>
+                                <option value="hidden">Ẩn với User</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-xs bg-amber-50 p-4 rounded-2xl border border-amber-100">
+                            <input type="number" step="any" id="form-lat" required class="bg-transparent font-bold outline-none text-amber-700" placeholder="Vĩ độ">
+                            <input type="number" step="any" id="form-lng" required class="bg-transparent font-bold outline-none text-amber-700" placeholder="Kinh độ">
+                        </div>
+                        <input type="text" id="form-head" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none" placeholder="Người phụ trách">
+                        <input type="text" id="form-deputy" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 focus:border-blue-500 outline-none" placeholder="Cấp phó">
+                        <textarea id="form-note" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 h-28 focus:border-blue-500 outline-none" placeholder="Hướng dẫn di chuyển mặc định từ Cổng trường..."></textarea>
+                        <textarea id="form-images-links" class="w-full p-4 border-2 border-slate-100 rounded-2xl bg-slate-50 h-28 text-xs focus:border-blue-500 outline-none" placeholder="Mỗi dòng 1 link ảnh Google Drive"></textarea>
                     </div>
-                    <textarea id="form-graph-json" class="w-full p-3 border rounded-xl bg-slate-900 text-green-400 font-mono text-[9px] h-32" placeholder="Graph JSON {nodes:{}, edges:{}}"></textarea>
-                    <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl uppercase text-xs shadow-lg">Lưu dữ liệu</button>
+                    <button type="submit" class="w-full btn-primary text-white font-black py-5 rounded-2xl shadow-xl shadow-blue-100 uppercase tracking-widest">Cập nhật hệ thống</button>
+                    <button type="button" onclick="logic.resetForm()" class="w-full text-slate-400 font-bold text-xs uppercase py-2">Hủy & Nhập mới</button>
                 </form>
-                <div id="admin-list" class="space-y-2"></div>
+                <div id="admin-grouped-list" class="space-y-4"></div>
             </div>
         </div>
     </aside>
 
-    <div id="login-modal" class="fixed inset-0 z-[10000] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 hidden">
-        <div class="bg-white w-full max-w-xs rounded-[2rem] p-8 shadow-2xl">
-            <h2 class="text-xl font-black text-center mb-6">Admin Login</h2>
-            <input type="password" id="admin-pass" class="w-full p-4 border rounded-xl text-center mb-4" placeholder="••••••">
-            <button onclick="ui.login()" class="w-full bg-blue-600 text-white font-black py-3 rounded-xl uppercase text-xs">Xác thực</button>
+    <!-- MAP INTERFACE -->
+    <main class="flex-1 map-container order-1 lg:order-2 sticky top-0 overflow-hidden shadow-inner">
+        <!-- Nút nổi di động dùng icon Search Location cố định cho đẹp -->
+        <div id="floating-toggle-btn" onclick="ui.toggleSidebar()" class="toggle-sidebar-btn" title="Ẩn/Hiện Menu">
+            <i class="fas fa-search-location"></i>
+        </div>
+        <div id="map"></div>
+        <div class="absolute top-6 right-6 z-[1000] flex flex-col gap-3">
+            <button onclick="ui.toggleLayer()" title="Đổi lớp bản đồ" class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white text-blue-600 flex items-center justify-center hover:scale-110 transition-all">
+                <i id="layer-icon" class="fas fa-satellite text-xl"></i>
+            </button>
+            <button onclick="logic.recenterToUser(true)" title="Vị trí của tôi" class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white text-blue-600 flex items-center justify-center hover:bg-blue-50 hover:scale-110 transition-all">
+                <i class="fas fa-location-arrow text-xl"></i>
+            </button>
+            <button onclick="logic.recenter()" title="Về điểm xuất phát" class="bg-white/90 backdrop-blur-md p-4 rounded-2xl shadow-2xl border border-white text-slate-600 flex items-center justify-center hover:scale-110 transition-all">
+                <i class="fas fa-crosshairs text-xl"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-modal" class="fixed inset-0 z-[5000] bg-slate-900/70 flex items-center justify-center p-4 hidden backdrop-blur-sm">
+        <div class="bg-white w-full max-sm:w-[90%] max-w-sm rounded-[3.5rem] p-10 shadow-2xl relative">
+            <button onclick="ui.toggleAdminLogin()" class="absolute top-8 right-8 text-slate-400 hover:text-slate-900 transition-colors">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+            <div class="text-center mb-10">
+                <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-[2rem] flex items-center justify-center mx-auto mb-5 shadow-inner"><i class="fas fa-lock text-3xl"></i></div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight text-center">Xác thực Admin</h2>
+            </div>
+            <div class="space-y-4">
+                <input type="text" id="admin-user" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 text-center font-bold outline-none focus:border-blue-500" placeholder="Username">
+                <input type="password" id="admin-pass" class="w-full p-5 border-2 border-slate-100 rounded-2xl bg-slate-50 text-center font-bold outline-none focus:border-blue-500" placeholder="Password">
+                <button onclick="ui.login()" class="w-full btn-primary text-white font-black py-4 rounded-2xl shadow-xl mt-4 uppercase tracking-widest">Đăng nhập</button>
+                <button onclick="ui.toggleAdminLogin()" class="w-full text-slate-400 font-bold text-[10px] uppercase py-2 tracking-widest mt-2 text-center hover:text-red-500">Hủy bỏ & Thoát</button>
+            </div>
         </div>
     </div>
+
 </div>
 
+<!-- Firebase & Logic -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
     import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 
     const firebaseConfig = { apiKey: "AIzaSyDi5gsOdE9tGOR6JQzMgw_9QscD-XBRNwk", authDomain: "alook-26a1f.firebaseapp.com", projectId: "alook-26a1f", storageBucket: "alook-26a1f.appspot.com", messagingSenderId: "201575321450", appId: "1:201575321450:web:3f00cdd591af0d5e52df13" };
+
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
-    const appId = 'nsg-navigator-v6';
+    const appId = 'nsg-navigator-v6'; 
 
     let map, routingControl, googleSatellite, googleRoadmap;
-    let isAdmin = false, locations = [], userLocation = null, userMarker = null;
-    let graphLayerGroup = L.layerGroup();
-    let currentSelectedLocation = null;
-    
-    // Tọa độ cổng trường mặc định
+    let locationMarkersGroup = L.layerGroup(); 
+    let isSatellite = true;
+    let isAdmin = false;
+    let isManualMode = false;
+    let isMuted = false;
+    let locations = [];
+    let galleryInterval = null; 
+    let userLocation = null; 
+    let userMarker = null; 
+    let hasCenteredInitial = false;
+    let startPointManualMarker = null;
+    let currentPath = [];
+    let selectedDestId = "";
+
+    // Touch Gesture state
+    let touchStartY = 0;
+    let isSwiping = false;
+
     const schoolGate = [10.735473, 106.680579];
+
+    const safeSetText = (id, val) => { const el = document.getElementById(id); if (el) el.innerText = val || ""; };
+
+    const typeMeta = {
+        'hieu-truong': { label: 'Hiệu Trưởng', icon: 'fa-user-tie', color: 'bg-red-50 text-red-600' },
+        'pho-hieu-truong': { label: 'Phó Hiệu Trưởng', icon: 'fa-user-tie', color: 'bg-orange-50 text-orange-600' },
+        'vp-khoa': { label: 'Văn Phòng Khoa', icon: 'fa-briefcase', color: 'bg-blue-50 text-blue-600' },
+        'phong-chuc-nang': { label: 'Phòng Chức Năng', icon: 'fa-puzzle-piece', color: 'bg-purple-50 text-purple-600' },
+        'phong-hoc': { label: 'Phòng Học', icon: 'fa-graduation-cap', color: 'bg-green-50 text-green-600' },
+        'hanh-chinh': { label: 'Hành Chính', icon: 'fa-building', color: 'bg-slate-50 text-slate-600' }
+    };
 
     window.ui = {
         toggleSidebar: () => {
-            const sb = document.getElementById('main-sidebar');
-            const toggleBtn = document.getElementById('toggle-menu-btn');
-            const isHidden = sb.classList.toggle('sidebar-hidden');
-            toggleBtn.classList.toggle('active', !isHidden);
-            setTimeout(() => { map.invalidateSize(); }, 500);
+            const sidebar = document.getElementById('main-sidebar');
+            const isHidden = sidebar.classList.contains('sidebar-hidden');
+            
+            if (isHidden) {
+                sidebar.classList.remove('sidebar-hidden');
+            } else {
+                sidebar.classList.add('sidebar-hidden');
+            }
+
+            setTimeout(() => {
+                if (map) map.invalidateSize();
+            }, 450);
         },
         toggleLayer: () => {
-            const isSat = map.hasLayer(googleSatellite);
-            map.removeLayer(isSat ? googleSatellite : googleRoadmap);
-            (isSat ? googleRoadmap : googleSatellite).addTo(map);
-            document.getElementById('layer-icon').className = isSat ? "fas fa-map" : "fas fa-satellite";
+            isSatellite = !isSatellite;
+            const layer = isSatellite ? googleSatellite : googleRoadmap;
+            map.eachLayer(l => { if (l instanceof L.TileLayer) map.removeLayer(l); });
+            layer.addTo(map);
+            document.getElementById('layer-icon').className = isSatellite ? "fas fa-satellite" : "fas fa-map";
         },
-        toggleAdminLogin: () => document.getElementById('login-modal').classList.toggle('hidden'),
+        toggleAdminLogin: () => { 
+            if (isAdmin) ui.logout(); 
+            else {
+                document.getElementById('login-modal').classList.toggle('hidden');
+            }
+        },
         login: () => {
-            if (document.getElementById('admin-pass').value === 'Nsg@2026') {
+            const u = document.getElementById('admin-user').value;
+            const p = document.getElementById('admin-pass').value;
+            if (u === 'admin' && p === 'Nsg@2026') {
                 isAdmin = true;
                 document.getElementById('login-modal').classList.add('hidden');
                 document.getElementById('admin-panel').classList.remove('hidden');
                 document.getElementById('user-view').classList.add('hidden');
-            }
+                document.getElementById('admin-icon').className = "fas fa-sign-out-alt";
+                logic.updateUILists(); 
+            } else { ui.showMessage("Tài khoản hoặc mật khẩu không chính xác!"); }
         },
         logout: () => {
             isAdmin = false;
             document.getElementById('admin-panel').classList.add('hidden');
             document.getElementById('user-view').classList.remove('hidden');
+            document.getElementById('admin-icon').className = "fas fa-user-shield";
+            logic.updateUILists(); 
         },
         showMessage: (msg) => {
-            const t = document.createElement('div');
-            t.className = "fixed bottom-10 left-1/2 -translate-x-1/2 z-[5000] bg-black/80 text-white px-6 py-3 rounded-full text-xs font-bold";
-            t.innerText = msg; document.body.appendChild(t);
-            setTimeout(() => t.remove(), 2500);
+            const toast = document.createElement('div');
+            toast.className = "fixed bottom-10 left-1/2 -translate-x-1/2 z-[10000] bg-slate-900 text-white px-6 py-3 rounded-full font-bold shadow-2xl text-center text-sm";
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
     };
 
@@ -215,251 +589,439 @@
         init: async () => {
             googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 22 });
             googleRoadmap = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', { maxZoom: 22 });
-            
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView(schoolGate, 19);
             googleSatellite.addTo(map);
-            graphLayerGroup.addTo(map);
-
-            // Cổng trường marker
-            L.marker(schoolGate, { 
-                icon: L.divIcon({ className: '', html: `<div class="bg-red-600 w-6 h-6 rounded-full border-2 border-white flex items-center justify-center shadow-lg"><i class="fas fa-door-open text-white text-[10px]"></i></div>`, iconAnchor: [12,12] }) 
-            }).addTo(map);
-
+            
+            L.marker(schoolGate, { icon: L.divIcon({ className: '', html: `<div class="marker-wrapper"><div class="marker-icon-box bg-red-600 shadow-xl border-white border-2 rounded-full flex items-center justify-center w-8 h-8"><i class="fas fa-door-open text-white text-xs"></i></div></div>`, iconSize: [32, 32], iconAnchor: [16, 16] }) }).addTo(map);
+            
+            locationMarkersGroup.addTo(map);
+            logic.startWatchingLocation();
+            
             map.on('click', (e) => {
                 if (isAdmin) {
                     document.getElementById('form-lat').value = e.latlng.lat.toFixed(7);
                     document.getElementById('form-lng').value = e.latlng.lng.toFixed(7);
+                } else if (isManualMode) {
+                    logic.setManualLocation(e.latlng);
                 }
             });
 
             await signInAnonymously(auth);
             logic.listenToFirestore();
-            logic.startGPS();
+            window.speechSynthesis.getVoices();
+
+            // GESTURE: Vuốt từ thanh ngang xuống để ẩn menu
+            const dragArea = document.getElementById('mobile-drag-area');
+            const sidebarHeader = document.getElementById('sidebar-header');
+
+            const handleTouchStart = (e) => {
+                touchStartY = e.touches[0].clientY;
+                isSwiping = true;
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isSwiping) return;
+                const touchCurrentY = e.touches[0].clientY;
+                // Nếu vuốt xuống hơn 40px
+                if (touchCurrentY - touchStartY > 40) {
+                    const sidebar = document.getElementById('main-sidebar');
+                    if (!sidebar.classList.contains('sidebar-hidden')) {
+                        ui.toggleSidebar();
+                        isSwiping = false;
+                    }
+                }
+            };
+
+            const handleTouchEnd = () => {
+                isSwiping = false;
+            };
+
+            [dragArea, sidebarHeader].forEach(el => {
+                el.addEventListener('touchstart', handleTouchStart, { passive: true });
+                el.addEventListener('touchmove', handleTouchMove, { passive: true });
+                el.addEventListener('touchend', handleTouchEnd);
+            });
+
+            // MOBILE AUTO FULL MAP
+            if (window.innerWidth < 1024) {
+                document.getElementById('main-sidebar').classList.add('sidebar-hidden');
+                setTimeout(() => {
+                    if(map) map.invalidateSize();
+                }, 600);
+            }
         },
 
-        startGPS: () => {
+        goHome: () => {
+            logic.clearSearch();
+            map.flyTo(schoolGate, 19);
+            ui.showMessage("Về cổng trường");
+        },
+
+        toggleMute: () => {
+            isMuted = !isMuted;
+            const icon = document.getElementById('mute-icon');
+            const btn = document.getElementById('mute-btn');
+            if (isMuted) {
+                window.speechSynthesis.cancel();
+                icon.className = "fas fa-volume-mute";
+                btn.classList.add('bg-red-50', 'text-red-500');
+            } else {
+                icon.className = "fas fa-volume-up";
+                btn.classList.remove('bg-red-50', 'text-red-500');
+                logic.toggleVoice();
+            }
+        },
+
+        startWatchingLocation: () => {
             if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition((p) => {
-                    const { latitude, longitude, accuracy } = p.coords;
-                    userLocation = [latitude, longitude];
-                    document.getElementById('gps-text').innerText = `Định vị: ±${Math.round(accuracy)}m`;
-                    logic.updateUserMarker();
-                }, null, { enableHighAccuracy: true });
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        document.getElementById('retry-gps-btn')?.classList.add('hidden');
+                        if (!isManualMode) {
+                            const { latitude, longitude, accuracy } = position.coords;
+                            userLocation = [latitude, longitude];
+                            logic.updateUserMarker();
+                            logic.checkDirection(userLocation);
+                            safeSetText('gps-text', `Định vị: ±${Math.round(accuracy)}m`);
+                            if (!hasCenteredInitial) {
+                                map.flyTo(userLocation, 21);
+                                hasCenteredInitial = true;
+                            }
+                        }
+                    },
+                    (err) => { 
+                        if (!isManualMode) {
+                            document.getElementById('retry-gps-btn')?.classList.remove('hidden');
+                            safeSetText('gps-text', "GPS bị lỗi hoặc tắt");
+                        }
+                    },
+                    { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
+                );
+            }
+        },
+
+        checkDirection: (user) => {
+            if (!routingControl || currentPath.length === 0) return;
+            const u = L.latLng(user[0], user[1]);
+            let minDistance = Infinity;
+            currentPath.forEach(p => {
+                const d = u.distanceTo(p);
+                if (d < minDistance) minDistance = d;
+            });
+            if (minDistance > 30) {
+                if(!isMuted) logic.speak("Bạn đang đi sai lộ trình, vui lòng quay lại.");
+                ui.showMessage("⚠️ Sai lộ trình!");
             }
         },
 
         updateUserMarker: () => {
             if (!userLocation) return;
             if (userMarker) userMarker.setLatLng(userLocation);
-            else userMarker = L.marker(userLocation, { 
-                icon: L.divIcon({ className: '', html: `<div class="relative"><div class="pulse-ring"></div><div class="blue-dot"></div></div>`, iconSize:[20,20], iconAnchor:[10,10] }) 
-            }).addTo(map);
+            else {
+                userMarker = L.marker(userLocation, {
+                    icon: L.divIcon({ 
+                        className: '', 
+                        html: `<div class="user-location-container"><div class="pulse-ring"></div><div class="blue-dot"></div></div>`, 
+                        iconSize: [24, 24], iconAnchor: [12, 12] 
+                    }),
+                    zIndexOffset: 1000
+                }).addTo(map);
+            }
         },
 
-        recenterToUser: (zoom) => {
-            if (userLocation) map.flyTo(userLocation, zoom ? 21 : 19);
-            else ui.showMessage("Chờ tín hiệu GPS...");
+        recenterToUser: (withZoom = false) => {
+            if (userLocation) map.flyTo(userLocation, withZoom ? 21 : 19);
+            else { ui.showMessage("Đang đợi GPS..."); logic.startWatchingLocation(); }
+        },
+
+        recenter: () => { map.flyTo(schoolGate, 19); },
+
+        toggleManualMode: () => {
+            isManualMode = !isManualMode;
+            const btn = document.getElementById('manual-pos-btn');
+            if (isManualMode) {
+                ui.showMessage("Chạm vào bản đồ để chọn nơi bạn đứng");
+                btn.classList.add('bg-blue-600', 'text-white');
+                btn.innerHTML = '<i class="fas fa-times mr-1"></i> Hủy chọn thủ công';
+            } else {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.innerHTML = '<i class="fas fa-hand-pointer mr-1"></i> Chọn vị trí thủ công';
+                if (startPointManualMarker) map.removeLayer(startPointManualMarker);
+                startPointManualMarker = null;
+                userLocation = null;
+                if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+                logic.clearSearch();
+                map.flyTo(schoolGate, 19);
+                logic.startWatchingLocation();
+            }
+        },
+
+        setManualLocation: (latlng) => {
+            if (startPointManualMarker) startPointManualMarker.setLatLng(latlng);
+            else startPointManualMarker = L.marker(latlng, { draggable: true }).addTo(map).bindPopup("Vị trí của bạn").openPopup();
+            userLocation = [latlng.lat, latlng.lng];
+            logic.updateUserMarker();
+            if (selectedDestId) logic.selectLocation(selectedDestId);
+        },
+
+        speak: (text) => {
+            if (!text || isMuted) return;
+            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            let viVoice = voices.find(v => v.lang.includes('vi'));
+            utterance.voice = viVoice || voices[0];
+            utterance.lang = 'vi-VN';
+            utterance.rate = 1.0;
+            window.speechSynthesis.speak(utterance);
+        },
+
+        formatImageLink: (url) => {
+            const driveMatch = url.match(/(?:id=|\/d\/|\/file\/d\/)([a-zA-Z0-9_-]{25,})/);
+            return driveMatch ? `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1200` : url;
+        },
+
+        getNavIcon: (text) => {
+            const t = text.toLowerCase();
+            if (t.includes("đi thẳng") || t.includes("hướng")) return `<svg class="nav-icon-svg" viewBox="0 0 48 48"><path d="M24 40 L24 10"></path><path d="M16 18 L24 10 L32 18"></path></svg>`;
+            if (t.includes("trái")) return `<svg class="nav-icon-svg" viewBox="0 0 48 48"><path d="M30 40 L30 24 Q30 14 20 14 L10 14"></path><path d="M18 6 L10 14 L18 22"></path></svg>`;
+            if (t.includes("phải")) return `<svg class="nav-icon-svg" viewBox="0 0 48 48"><path d="M18 40 L18 24 Q18 14 28 14 L38 14"></path><path d="M30 6 L38 14 L30 22"></path></svg>`;
+            return `<div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-sm"><i class="fas fa-chevron-right text-xs"></i></div>`;
+        },
+
+        translateInstruction: (instr) => {
+            let t = instr.text;
+            const transMap = {
+                'Northwest': 'Tây Bắc', 'Northeast': 'Đông Bắc', 'Southwest': 'Tây Nam', 'Southeast': 'Đông Nam',
+                'North': 'Bắc', 'South': 'Nam', 'East': 'Đông', 'West': 'Tây',
+                'Head ': 'Đi về hướng ', 'Continue on ': 'Tiếp tục đi trên ',
+                'Turn left': 'Rẽ trái', 'Turn right': 'Rẽ phải', 'onto ': 'vào ', 'towards ': 'về phía ',
+                'at the roundabout': 'tại vòng xoay', 'take the (\\d+). exit': 'đi theo lối ra thứ $1',
+                'at your destination': 'tại điểm đến', 'your destination': 'điểm đến của bạn',
+                'on the right': 'bên tay phải', 'on the left': 'bên tay trái', 'You have arrived': 'Bạn đã đến nơi', 'Rẻ': 'Rẽ'
+            };
+            Object.keys(transMap).forEach(key => {
+                const regex = new RegExp(key, 'gi');
+                t = t.replace(regex, transMap[key]);
+            });
+            return t;
+        },
+
+        startImageAutoCycle: (totalEstimatedSeconds, imageCount) => {
+            if (galleryInterval) clearInterval(galleryInterval);
+            if (imageCount <= 1) return;
+            const gallery = document.getElementById('image-gallery');
+            const timePerImage = (totalEstimatedSeconds * 1000) / imageCount;
+            let currentIdx = 0;
+            galleryInterval = setInterval(() => {
+                currentIdx++;
+                if (currentIdx >= imageCount) { clearInterval(galleryInterval); return; }
+                gallery.scrollTo({ left: currentIdx * gallery.clientWidth, behavior: 'smooth' });
+            }, timePerImage);
+        },
+
+        toggleVoice: (manualText = null) => {
+            if(isMuted) return;
+            let textToSpeak = manualText;
+            if (!textToSpeak) {
+                const steps = document.querySelectorAll('#step-list .instr-text');
+                textToSpeak = Array.from(steps).map((p) => p.innerText).join('. ');
+            }
+            if (textToSpeak) {
+                logic.speak(textToSpeak);
+                document.getElementById('voice-icon').className = "fas fa-spinner fa-spin text-blue-600";
+                setTimeout(() => { document.getElementById('voice-icon').className = "fas fa-play"; }, 5000);
+            }
         },
 
         listenToFirestore: () => {
             onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'locations'), (snap) => {
-                locations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                if (isAdmin) logic.renderAdminList();
+                locations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                logic.updateUILists();
             });
         },
+
+        renderAdminItem: (loc) => `<div class="flex justify-between items-center p-3 bg-white rounded-xl border mb-1 shadow-sm hover:border-blue-300 transition-all ${loc.visibility === 'hidden' ? 'opacity-60 bg-slate-50' : ''}">
+            <p class="font-bold text-xs flex-1 pr-2">${loc.name} ${loc.visibility === 'hidden' ? '<i class="fas fa-eye-slash ml-1 text-slate-400"></i>' : ''}</p>
+            <div class="flex gap-1">
+                <button onclick="logic.edit('${loc.id}')" class="w-8 h-8 text-blue-600 bg-blue-50 rounded-lg flex items-center justify-center hover:bg-blue-100"><i class="fas fa-edit text-xs"></i></button>
+                <button onclick="logic.delete('${loc.id}')" class="w-8 h-8 text-red-600 bg-red-50 rounded-lg flex items-center justify-center hover:bg-red-100"><i class="fas fa-trash text-xs"></i></button>
+            </div></div>`,
 
         showSearch: () => {
+            logic.filterSearch(document.getElementById('search-input').value); 
             document.getElementById('search-results').classList.remove('hidden');
-            logic.filterSearch(document.getElementById('search-input').value);
         },
 
-        filterSearch: (q) => {
-            const container = document.getElementById('search-results');
-            container.innerHTML = "";
-            const filtered = locations.filter(l => l.name.toLowerCase().includes(q.toLowerCase()));
-            filtered.forEach(l => {
-                const item = document.createElement('div');
-                item.className = "search-item";
-                item.innerHTML = `<i class="fas fa-map-marker-alt text-blue-500"></i><div><p class="font-bold text-sm">${l.name}</p><p class="text-[9px] text-slate-400">Khu ${l.area || '?'}</p></div>`;
-                item.onclick = () => {
-                    document.getElementById('search-input').value = l.name;
-                    container.classList.add('hidden');
-                    logic.selectLocation(l);
-                    ui.toggleSidebar();
-                };
-                container.appendChild(item);
+        clearSearch: () => {
+            document.getElementById('search-input').value = "";
+            selectedDestId = "";
+            logic.selectLocation("");
+            document.getElementById('search-results').classList.add('hidden');
+        },
+
+        filterSearch: (query) => {
+            const resultsDiv = document.getElementById('search-results');
+            resultsDiv.innerHTML = "";
+            resultsDiv.classList.remove('hidden');
+            const q = query.toLowerCase().trim();
+            let filtered = locations.filter(l => isAdmin || l.visibility !== 'hidden');
+            if (q) {
+                filtered = filtered.filter(l => {
+                    return l.name.toLowerCase().includes(q) || (typeMeta[l.type]?.label || "").toLowerCase().includes(q);
+                });
+            }
+            if (filtered.length === 0) {
+                resultsDiv.innerHTML = `<div class="p-8 text-center text-xs text-slate-400 italic">Không tìm thấy địa điểm</div>`;
+                return;
+            }
+            const groups = ["Trệt", "1", "2", "3", "4"];
+            groups.forEach(f => {
+                const floorList = filtered.filter(l => l.floor === f);
+                if (floorList.length > 0) {
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = "bg-slate-50 px-5 py-2 text-[9px] font-extrabold text-blue-600/60 uppercase tracking-widest sticky top-0 backdrop-blur-sm z-10";
+                    groupTitle.innerText = f === 'Trệt' ? 'Tầng Trệt' : `Lầu ${f}`;
+                    resultsDiv.appendChild(groupTitle);
+                    floorList.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric: true})).forEach(l => {
+                        const meta = typeMeta[l.type] || { label: 'Địa điểm', icon: 'fa-map-marker-alt', color: 'bg-slate-50 text-slate-400' };
+                        const item = document.createElement('div');
+                        item.className = "search-item";
+                        item.innerHTML = `<div class="search-item-icon ${meta.color}"><i class="fas ${meta.icon} text-sm"></i></div><div class="flex-1 min-w-0"><p class="font-bold text-sm text-slate-700 truncate">${l.name}</p><p class="text-[9px] text-slate-400 uppercase tracking-tighter">${meta.label} • Khu ${l.area}</p></div><i class="fas fa-chevron-right text-[10px] text-slate-200"></i>`;
+                        item.onclick = () => {
+                            document.getElementById('search-input').value = l.name;
+                            selectedDestId = l.id;
+                            logic.selectLocation(l.id);
+                            resultsDiv.classList.add('hidden');
+                        };
+                        resultsDiv.appendChild(item);
+                    });
+                }
             });
         },
 
-        getDist: (p1, p2) => {
-            const R = 6371e3;
-            const φ1 = p1[0] * Math.PI/180, φ2 = p2[0] * Math.PI/180;
-            const Δφ = (p2[0]-p1[0]) * Math.PI/180, Δλ = (p2[1]-p1[1]) * Math.PI/180;
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        },
-
-        // Dijkstra algorithm for shortest path in graph
-        findShortestPath: (graph, startNodeId, endNodeId) => {
-            if (!graph || !graph.nodes || !graph.edges) return null;
-            const nodes = graph.nodes, edges = graph.edges;
-            const distances = {}, prev = {}, queue = new Set(Object.keys(nodes));
-            
-            Object.keys(nodes).forEach(id => { distances[id] = Infinity; prev[id] = null; });
-            distances[startNodeId] = 0;
-
-            while (queue.size > 0) {
-                let u = null;
-                for (const nodeId of queue) { if (u === null || distances[nodeId] < distances[u]) u = nodeId; }
-                if (u === endNodeId || distances[u] === Infinity) break;
-                queue.delete(u);
-
-                (edges[u] || []).forEach(edge => {
-                    const v = edge.to;
-                    if (!queue.has(v)) return;
-                    const d = logic.getDist([nodes[u].lat, nodes[u].lng], [nodes[v].lat, nodes[v].lng]);
-                    const alt = distances[u] + d;
-                    if (alt < distances[v]) { distances[v] = alt; prev[v] = u; }
-                });
-            }
-            const path = []; let curr = endNodeId;
-            while (curr !== null) { path.unshift(curr); curr = prev[curr]; }
-            return path.length > 1 && path[0] === startNodeId ? path : null;
-        },
-
-        selectLocation: (loc) => {
-            currentSelectedLocation = loc;
-            document.getElementById('welcome-panel').classList.add('hidden');
-            document.getElementById('navigation-panel').classList.remove('hidden');
-            const steps = document.getElementById('step-list'); steps.innerHTML = "";
-            graphLayerGroup.clearLayers();
-            if (routingControl) map.removeControl(routingControl);
-
-            const currentPos = userLocation || schoolGate;
-            
-            // Tìm Node gần nhất với vị trí hiện tại và Node gần nhất với đích
-            let startNodeId = null, targetNodeId = null, minS = Infinity, minE = Infinity;
-            if (loc.graph && loc.graph.nodes) {
-                Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
-                    const dS = logic.getDist(currentPos, [nd.lat, nd.lng]);
-                    if (dS < minS) { minS = dS; startNodeId = id; }
-                    const dE = logic.getDist(loc.coords, [nd.lat, nd.lng]);
-                    if (dE < minE) { minE = dE; targetNodeId = id; }
-                });
-            }
-
-            // LOGIC HYBRID:
-            // Nếu khoảng cách đến Node gần nhất > 45m -> Đang ở ngoài đường
-            if (minS > 45 && userLocation) {
-                document.getElementById('route-type-label').innerText = "Dẫn đường ngoài trường";
-                document.getElementById('distance-card').className = "bg-blue-600 p-5 rounded-[1.5rem] text-white flex justify-between items-center shadow-xl";
-                
-                // 1. Dẫn từ GPS tới Cổng trường (Leaflet Routing)
-                routingControl = L.Routing.control({
-                    waypoints: [L.latLng(userLocation[0], userLocation[1]), L.latLng(schoolGate[0], schoolGate[1])],
-                    language: 'vi', createMarker: () => null, addWaypoints: false,
-                    lineOptions: { styles: [{ color: '#1a73e8', weight: 6 }] }
-                }).addTo(map);
-
-                routingControl.on('routesfound', (e) => {
-                    const route = e.routes[0];
-                    document.getElementById('distance-val').innerText = `${Math.round(route.summary.totalDistance)} M tới cổng`;
-                    route.instructions.forEach(ins => {
-                        const d = document.createElement('div'); d.className = "flex gap-3 items-center bg-slate-50 p-3 rounded-xl border";
-                        d.innerHTML = `<i class="fas fa-chevron-right text-blue-500 text-[10px]"></i><p class="text-xs font-bold text-slate-600">${ins.text}</p>`;
-                        steps.appendChild(d);
+        updateUILists: () => {
+            const adminGroupedContainer = document.getElementById('admin-grouped-list');
+            if (!adminGroupedContainer) return;
+            adminGroupedContainer.innerHTML = '';
+            const floors = ["Trệt", "1", "2", "3", "4"];
+            floors.forEach(f => {
+                const floorLocations = locations.filter(l => l.floor === f);
+                if (floorLocations.length > 0) {
+                    const adminGroup = document.createElement('details'); adminGroup.className = 'admin-group';
+                    let adminHtml = `<summary>📍 ${f === 'Trệt' ? 'TẦNG TRỆT' : 'TẦNG ' + f} (${floorLocations.length})</summary><div class="admin-group-content p-2">`;
+                    Object.keys(typeMeta).forEach(typeKey => {
+                        const subList = floorLocations.filter(l => l.type === typeKey);
+                        if (subList.length > 0) { adminHtml += `<div class="admin-sub-title">${typeMeta[typeKey].label}</div>` + subList.map(l => logic.renderAdminItem(l)).join(''); }
                     });
-                    
-                    // 2. Vẽ nối tiếp từ Node cổng trường vào trong Graph (Màu vàng)
-                    if (loc.graph) {
-                        let gateNodeId = null, minG = Infinity;
-                        Object.entries(loc.graph.nodes).forEach(([id, nd]) => {
-                            const dG = logic.getDist(schoolGate, [nd.lat, nd.lng]);
-                            if (dG < minG) { minG = dG; gateNodeId = id; }
-                        });
-                        logic.drawIndoorPath(loc.graph, gateNodeId, targetNodeId, loc.coords);
-                    }
-                });
-            } else {
-                // ĐANG Ở TRONG TRƯỜNG -> DÙNG HOÀN TOÀN GRAPH
-                document.getElementById('route-type-label').innerText = "Dẫn đường nội bộ (Indoor)";
-                document.getElementById('distance-card').className = "bg-amber-600 p-5 rounded-[1.5rem] text-white flex justify-between items-center shadow-xl";
-                
-                // Vẽ Snap-line từ GPS người dùng tới Node hành lang đầu tiên
-                if (startNodeId && loc.graph) {
-                    const firstNode = loc.graph.nodes[startNodeId];
-                    L.polyline([currentPos, [firstNode.lat, firstNode.lng]], { color: '#1a73e8', weight: 4, className: 'snap-connection' }).addTo(graphLayerGroup);
-                    
-                    const snapStep = document.createElement('div');
-                    snapStep.className = "flex gap-3 items-center bg-blue-50 p-4 rounded-xl border border-blue-200";
-                    snapStep.innerHTML = `<i class="fas fa-walking text-blue-600"></i><p class="text-xs font-bold text-blue-800">Di chuyển vào lối đi hành lang gần nhất (${Math.round(minS)}m)</p>`;
-                    steps.appendChild(snapStep);
+                    adminGroup.innerHTML = adminHtml + `</div>`;
+                    adminGroupedContainer.appendChild(adminGroup);
+                }
+            });
+        },
 
-                    // Thuật toán Dijkstra cho phần còn lại
-                    logic.drawIndoorPath(loc.graph, startNodeId, targetNodeId, loc.coords);
-                    document.getElementById('distance-val').innerText = "Đã tìm thấy lối đi";
+        selectLocation: (id) => {
+            if (!id) {
+                if (routingControl) map.removeControl(routingControl);
+                document.getElementById('welcome-panel').classList.remove('hidden');
+                document.getElementById('navigation-panel').classList.add('hidden');
+                return;
+            }
+            const loc = locations.find(l => l.id === id);
+            if (loc) {
+                selectedDestId = id;
+                logic.updateSidebarInfo(loc);
+                if (window.innerWidth < 1024) {
+                    setTimeout(() => {
+                        const sidebar = document.getElementById('main-sidebar');
+                        if (!sidebar.classList.contains('sidebar-hidden')) {
+                            ui.toggleSidebar();
+                        }
+                    }, 800);
                 }
             }
-
-            map.flyTo(loc.coords, 21);
         },
 
-        drawIndoorPath: (graph, startId, endId, finalCoords) => {
-            const pathIds = logic.findShortestPath(graph, startId, endId);
-            if (pathIds) {
-                const coords = pathIds.map(id => [graph.nodes[id].lat, graph.nodes[id].lng]);
-                
-                // Vẽ đường Graph màu vàng hổ phách
-                L.polyline(coords, { color: '#fbbf24', weight: 8, className: 'internal-path' }).addTo(graphLayerGroup);
-                
-                // Vẽ Snap-line từ Node cuối cùng tới chính xác điểm đích (Phòng học)
-                const lastNode = graph.nodes[pathIds[pathIds.length-1]];
-                L.polyline([[lastNode.lat, lastNode.lng], finalCoords], { color: '#fbbf24', weight: 8, className: 'internal-path' }).addTo(graphLayerGroup);
-                
-                // Đánh dấu các Node
-                pathIds.forEach(id => {
-                    const n = graph.nodes[id];
-                    L.circleMarker([n.lat, n.lng], { radius: 3, color: '#000', fillColor: '#fbbf24', fillOpacity: 1, weight: 1 }).addTo(graphLayerGroup);
-                });
-            }
-        },
-
-        goHome: () => {
-            document.getElementById('navigation-panel').classList.add('hidden');
-            document.getElementById('welcome-panel').classList.remove('hidden');
-            document.getElementById('search-input').value = "";
-            graphLayerGroup.clearLayers();
+        updateSidebarInfo: (loc) => {
+            document.getElementById('welcome-panel').classList.add('hidden');
+            document.getElementById('navigation-panel').classList.remove('hidden');
+            safeSetText('head-name', loc.head || "Chưa cập nhật");
+            const dep = document.getElementById('deputy-container');
+            if (loc.deputy) { dep.classList.remove('hidden'); safeSetText('deputy-name', loc.deputy); } else { dep.classList.add('hidden'); }
+            const gallery = document.getElementById('image-gallery');
+            gallery.innerHTML = '';
+            (loc.images || []).forEach(url => {
+                const img = document.createElement('img'); img.src = logic.formatImageLink(url);
+                img.onerror = () => img.style.display = 'none'; gallery.appendChild(img);
+            });
+            document.getElementById('image-gallery-container').classList.toggle('hidden', (loc.images || []).length === 0);
+            const stepsContainer = document.getElementById('step-list');
+            stepsContainer.innerHTML = '<p class="text-xs text-slate-400 italic text-center py-4">Đang tính toán lộ trình...</p>';
+            const startPoint = userLocation ? L.latLng(userLocation[0], userLocation[1]) : L.latLng(schoolGate[0], schoolGate[1]);
+            const isAtGate = !userLocation || startPoint.distanceTo(L.latLng(schoolGate[0], schoolGate[1])) < 15;
             if (routingControl) map.removeControl(routingControl);
-            map.flyTo(schoolGate, 19);
-        },
-
-        renderAdminList: () => {
-            const container = document.getElementById('admin-list');
-            container.innerHTML = `<p class="text-[9px] font-black uppercase text-slate-400">Danh sách (${locations.length})</p>`;
-            locations.forEach(l => {
-                const d = document.createElement('div');
-                d.className = "p-2 bg-white border rounded-lg flex justify-between items-center text-xs";
-                d.innerHTML = `<span>${l.name}</span><button onclick="logic.delete('${l.id}')" class="text-red-500"><i class="fas fa-trash"></i></button>`;
-                container.appendChild(d);
+            routingControl = L.Routing.control({
+                waypoints: [startPoint, L.latLng(loc.coords[0], loc.coords[1])],
+                lineOptions: { styles: [{ color: '#1a73e8', opacity: 0.9, weight: 8, className: 'leaflet-ant-path' }] },
+                createMarker: () => null, show: false
+            }).addTo(map);
+            routingControl.on('routesfound', (e) => {
+                const route = e.routes[0];
+                currentPath = route.coordinates;
+                safeSetText('distance-val', Math.round(route.summary.totalDistance) + 'm');
+                map.flyTo(loc.coords, 21);
+                stepsContainer.innerHTML = '';
+                let voiceText = `Dẫn đường tới ${loc.name}. `;
+                if (isAtGate && loc.note) {
+                    loc.note.split('\n').filter(s => s.trim()).forEach((s) => {
+                        const d = document.createElement('div');
+                        d.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm";
+                        d.innerHTML = `<div class="shrink-0">${logic.getNavIcon(s)}</div><p class="text-sm font-bold text-slate-700 instr-text">${s}</p>`;
+                        stepsContainer.appendChild(d);
+                        voiceText += `${s}. `;
+                    });
+                } else {
+                    route.instructions.forEach((instr) => {
+                        const txt = logic.translateInstruction(instr);
+                        const d = document.createElement('div');
+                        d.className = "flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm";
+                        d.innerHTML = `<div class="shrink-0">${logic.getNavIcon(txt)}</div><div class="flex-1"><p class="text-sm font-bold text-slate-700 instr-text">${txt}</p></div>`;
+                        stepsContainer.appendChild(d);
+                        voiceText += `${txt}. `;
+                    });
+                }
+                if (!isManualMode && !isMuted) logic.toggleVoice(voiceText);
+                const images = document.querySelectorAll('#image-gallery img');
+                if (images.length > 0) logic.startImageAutoCycle(Math.max(voiceText.length / 15, 6), images.length);
             });
         },
-        delete: async (id) => { if(confirm("Xóa?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id)); },
+
         handleSaveLocation: async (e) => {
             e.preventDefault();
             const id = document.getElementById('form-id').value || crypto.randomUUID();
-            let gData = null; try { gData = JSON.parse(document.getElementById('form-graph-json').value); } catch(e) {}
             const data = {
-                name: document.getElementById('form-name').value,
-                coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
-                graph: gData, updatedAt: Date.now()
+                name: document.getElementById('form-name').value, area: document.getElementById('form-area').value, floor: document.getElementById('form-floor').value, type: document.getElementById('form-type').value,
+                visibility: document.getElementById('form-visibility').value, coords: [parseFloat(document.getElementById('form-lat').value), parseFloat(document.getElementById('form-lng').value)],
+                head: document.getElementById('form-head').value, deputy: document.getElementById('form-deputy').value, note: document.getElementById('form-note').value,
+                images: document.getElementById('form-images-links').value.split('\n').filter(s => s.trim()), updatedAt: Date.now()
             };
             await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id), data);
-            ui.showMessage("Đã lưu!");
-            document.getElementById('location-form').reset();
-        }
-    };
+            logic.resetForm(); ui.showMessage("Đã cập nhật hệ thống!");
+        },
 
+        resetForm: () => { document.getElementById('location-form').reset(); document.getElementById('form-id').value = ''; },
+        edit: (id) => {
+            const loc = locations.find(l => l.id === id); if (!loc) return;
+            ['id', 'name', 'area', 'floor', 'type', 'head', 'deputy', 'note', 'visibility'].forEach(f => { const el = document.getElementById(`form-${f}`); if (el) el.value = loc[f] || (f === 'visibility' ? 'public' : ''); });
+            document.getElementById('form-lat').value = loc.coords[0];
+            document.getElementById('form-lng').value = loc.coords[1];
+            document.getElementById('form-images-links').value = (loc.images || []).join('\n');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        delete: async (id) => { if(confirm("Xác nhận xóa địa điểm này?")) await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'locations', id)); }
+    };
     window.onload = logic.init;
 </script>
+
 </body>
 </html>
